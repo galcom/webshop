@@ -7,23 +7,28 @@
 
 <div class="card h-100">
 	<div class="card-body p-0">
+		
+
 		{% if cart_settings.enable_checkout or cart_settings.show_price_in_quotation %}
 			<table class="table w-100">
 				<tr>
 					{% set total_items = frappe.utils.cstr(frappe.utils.flt(doc.total_qty, 0)) %}
 					<td class="bill-label">{{ _("Net Total (") + total_items + _(" Items)") }}</td>
-					<td class="bill-content net-total text-right">{{ doc.get_formatted("net_total") }}</td>
+					<td class="bill-content net-total text-right">
+						{{ doc.get_formatted("net_total") }}
+						{{ doc.currency }}
+					</td>
 				</tr>
 
 				<!-- taxes -->
 				{% for d in doc.taxes %}
-					{% if d.tax_amount %}
+					{% if d.base_tax_amount %}
 						<tr>
 							<td class="bill-label">
 								{{ d.description }}
 							</td>
 							<td class="bill-content text-right">
-								{{ d.get_formatted("tax_amount") }}
+								{{ d.get_formatted("base_tax_amount") }}
 							</td>
 						</tr>
 					{% endif %}
@@ -47,10 +52,15 @@
 			<table class="table w-100 grand-total mt-6">
 				<tr>
 					<td class="bill-content net-total">{{ _("Grand Total") }}</td>
-					<td class="bill-content net-total text-right">{{ doc.get_formatted("grand_total") }}</td>
+					<td class="bill-content net-total text-right">
+						{{ doc.get_formatted("grand_total") }}
+						{{ doc.currency }}
+					</td>
 				</tr>
 			</table>
 		{% endif %}
+
+		
 	</div>
 </div>
 

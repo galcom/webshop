@@ -3,6 +3,7 @@
 
 import frappe
 import frappe.defaults
+import json
 from frappe import _, throw
 from frappe.contacts.doctype.address.address import get_address_display
 from frappe.contacts.doctype.contact.contact import get_contact_name
@@ -151,69 +152,90 @@ def request_for_quotation():
 
 	return quotation.name
 
-
 @frappe.whitelist()
-def update_cart(item_code, qty, additional_notes=None, with_items=False):
-	quotation = _get_cart_quotation()
+def update_cart(item_code=None, qty=None, additional_notes=None, with_items=False,custom_fields=None,name=None):
+    logger=frappe.logger()
+    logger.debug(f"in update_cart. item: {item_code} name: {name}")
+    logger.debug("custom_fields string: "+str(custom_fields))
+    quotation = _get_cart_quotation()
 
-	empty_card = False
-	qty = flt(qty)
-	if qty == 0:
-		quotation_items = quotation.get("items", {"item_code": ["!=", item_code]})
-		if quotation_items:
-			quotation.set("items", quotation_items)
-		else:
-			empty_card = True
+    
+    if custom_fields:
+        custom_fields = json.loads(custom_fields)
 
-	else:
-		warehouse = frappe.get_cached_value(
-			"Website Item", {"item_code": item_code}, "website_warehouse"
-		)
+    item_identifier = "name"
+    identifier_value = name
 
-		quotation_items = quotation.get("items", {"item_code": item_code})
-		if not quotation_items:
-			quotation.append(
-				"items",
-				{
-					"doctype": "Quotation Item",
-					"item_code": item_code,
-					"qty": qty,
-					"additional_notes": additional_notes,
-					"warehouse": warehouse,
-				},
-			)
-		else:
-			quotation_items[0].qty = qty
-			quotation_items[0].warehouse = warehouse
-			quotation_items[0].additional_notes = additional_notes
+    logger.debug("item_identifier: "+str(item_identifier)+", value: "+str(identifier_value))
 
-	apply_cart_settings(quotation=quotation)
+    empty_cart = False
+    if item_code != None:
+        qty = flt(qty)
+        if qty == 0: #removing this item
+            quotation_items = quotation.get("items", {item_identifier: ["!=", identifier_value]})
+            if quotation_items:
+                quotation.set("items", quotation_items) #reset with all OTHER items
+            else:
+                empty_cart = True  #we removed the last item
 
-	quotation.flags.ignore_permissions = True
-	quotation.payment_schedule = []
-	if not empty_card:
-		quotation.save()
-	else:
-		quotation.delete()
-		quotation = None
+        else: #adding new item, or adjusting quantity
+            quotation_items = quotation.get("items", {item_identifier: identifier_value })
+            if not quotation_items: #new item
+                logger.debug(f"no items found with  {item_identifier} of {identifier_value}")
+                args =  {
+                    "doctype": "Quotation Item",
+                    "item_code": item_code,
+                    "qty": qty,
+                    "additional_notes": additional_notes,
+                }
+                if custom_fields:
+                    for k in custom_fields:
+                        logger.debug("adding custom field "+k+", "+custom_fields[k])
+                        args[k] = custom_fields[k]
+                
+                quotation.append("items",args )
+                frappe.msgprint(f"Item Added to Cart",alert=True,indicator="green")
+            else: #adjusting quantity
+                logger.debug("quote item name: "+quotation_items[0].name)
+                quotation_items[0].qty = qty
+                quotation_items[0].additional_notes = additional_notes
+    else:  #quotation wide settings
+        if custom_fields and "financial_assistance" in  custom_fields:
+            logger.debug("financial assistance set to: "+str(custom_fields["financial_assistance"]))
+            quotation.set("request_financial_assistance",custom_fields["financial_assistance"])
+        if custom_fields and "custom_destination_country" in  custom_fields:
+            quotation.set("custom_destination_country",custom_fields["custom_destination_country"])
+        if custom_fields and "custom_customer_notes" in  custom_fields:
+            quotation.set("custom_customer_notes",custom_fields["custom_customer_notes"])
 
-	set_cart_count(quotation)
 
-	if cint(with_items):
-		context = get_cart_quotation(quotation)
-		return {
-			"items": frappe.render_template(
-				"templates/includes/cart/cart_items.html", context
-			),
-			"total": frappe.render_template(
-				"templates/includes/cart/cart_items_total.html", context
-			),
-			"taxes_and_totals": frappe.render_template(
-				"templates/includes/cart/cart_payment_summary.html", context
-			),
-		}
-	else:
-		return {"name": quotation.name}
+    apply_cart_settings(quotation=quotation)
+
+    quotation.flags.ignore_permissions = True
+    quotation.payment_schedule = []
+    if not empty_cart:
+        quotation.save()
+    else:
+        quotation.delete()
+        quotation = None
+
+    set_cart_count(quotation)
+
+    if cint(with_items):
+        context = get_cart_quotation(quotation)
+        return {
+            "items": frappe.render_template("templates/includes/cart/cart_items.html",
+                context),
+            "total": frappe.render_template("templates/includes/cart/cart_items_total.html",
+                context),
+            "taxes_and_totals": frappe.render_template("templates/includes/cart/cart_payment_summary.html",
+                context)
+        }
+    else:
+        return {
+            'name': quotation.name
+        }
+
 
 
 @frappe.whitelist()

@@ -162,11 +162,11 @@ webshop.ProductGrid = class {
 	}
 
 	get_primary_button(item, settings) {
-		if (item.has_variants) {
+		if (item.has_variants || item.item_group.includes("Player")) {
 			return `
 				<a href="/${ item.route || '#' }">
 					<div class="btn btn-sm btn-explore-variants w-100 mt-4">
-						${ __('Explore') }
+						${ __('Configure') }
 					</div>
 				</a>
 			`;

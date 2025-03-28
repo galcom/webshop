@@ -1,0 +1,70 @@
+{% if shopping_cart and shopping_cart.cart_settings.enabled %}
+{% set cart_settings = shopping_cart.cart_settings %}
+<div>
+
+    <label>Audio Content</label>
+    <textarea class="audio-content h-auto my-2 form-control"  placeholder="Describe the language and content type"></textarea>
+
+    <!-- Add to Cart / View in Cart, Contact Us -->
+    <div class="mt-6 mb-5">
+        <div class="mb-4 d-flex">
+            <!-- Add to Cart -->
+            <a href="/cart" class="btn btn-light btn-view-in-cart hidden mr-2 font-md"
+                role="button">
+                {{  _("View in Cart") if cart_settings.enable_checkout else _("View in Quote") }}
+            </a>
+            <button class="btn btn-primary btn-add-to-cart mr-2 w-30-40" disabled >
+                <span class="mr-2">
+                    <svg class="icon icon-md">
+                        <use href="#icon-assets"></use>
+                    </svg>
+                </span>
+                {{ _("Add to Cart") if cart_settings.enable_checkout else  _("Add to Quote") }}
+            </button>
+
+        </div>
+    </div>
+
+</div>
+<script>
+    frappe.ready( () =>{
+        var audio_content;
+        const fieldNames = ["audio-content"];
+        const guestStorageName = "guest_envoy_config";
+
+        const haveAudio = function(){
+            audio_content = $(".audio-content").val();
+            return audio_content != null && audio_content !== "";
+        }
+        $(".audio-content").on("keyup", galcom.utils.delay(()=>{
+
+            $(".btn-add-to-cart").prop("disabled",! haveAudio());
+        },500));
+
+        $('.btn-add-to-cart').on('click', (e) => {
+            galcom.utils.saveGuestFields(guestStorageName,fieldNames);
+			// Bind action on add to cart button
+			const $btn = $(e.currentTarget);
+			$btn.prop('disabled', true);
+			webshop.webshop.shopping_cart.update_cart({
+				item_code: "{{ doc.item_code }}",
+                custom_fields: {
+                    audio_content,
+                },
+				qty: 1,
+				callback(r) {
+
+					$btn.prop('disabled', false);
+					if (r.message) {
+						$('.btn-add-to-cart, .btn-view-in-cart').toggleClass('hidden');
+					}
+				}
+			});
+		});
+
+        galcom.utils.restoreGuestFields(guestStorageName,fieldNames);
+        $(".btn-add-to-cart").prop("disabled",! haveAudio());
+
+     });
+</script>
+{% endif %}

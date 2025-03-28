@@ -1,0 +1,32 @@
+{% if cart_settings.enable_checkout or cart_settings.show_price_in_quotation %}
+<h6>
+	{{ _("Order Options") }}
+</h6>
+{% endif %}
+
+<div class="card h-100">
+	<div class="card-body p-0">
+		<div class="form-check my-4  text-nowrap">
+			<input type="checkbox" 
+				{% if doc.request_financial_assistance %} checked {% endif %}	
+				class="form-check-input" id="financial_assistance">
+			<label class="form-check-label" for="financial_assistance">Request Finanical Assistance</label>
+		</div>
+		<div class="form-group">
+			<label for="custom_destination_country">Final Destination Country</label>
+			<input class="form-control" id="custom_destination_country" value="{{ doc.custom_destination_country or '' }}"/>
+		</div>
+
+		<div class="form-group">
+			<label for="custom_customer_notes">Notes</label>
+			<textarea class="form-control" id="custom_customer_notes" value="{{ doc.custom_customer_notes or '' }}"></textarea>
+		</div>
+		
+
+		<div class="mt-3 text-center">
+			<a href="mailto:galcom@galcom.com?subject=Order%20Help">Help</a>
+		</div>
+		
+	</div>
+</div>
+

@@ -10,6 +10,15 @@ $.extend(shopping_cart, {
 		$("#cart-container").html('<div class="msg-box"><h4>' +
 			title + '</h4><p class="text-muted">' + text + '</p></div>');
 	},
+	set_error: function(message){
+		$("#cart-error")
+			.empty()
+			.html(message)
+			.toggle(true);
+	},
+	clear_error: function(){
+		$("#cart-error").empty().toggle(false);
+	},
 
 	bind_events: function() {
 		shopping_cart.bind_place_order();
@@ -18,7 +27,15 @@ $.extend(shopping_cart, {
 		shopping_cart.bind_remove_cart_item();
 		shopping_cart.bind_change_notes();
 		shopping_cart.bind_coupon_code();
+		shopping_cart.bind_financial_assistance();
 	},
+	bind_financial_assistance: function() {
+		$('.payment-summary').on('click','#financial_assistance', function() {
+			const value = this.checked;
+			shopping_cart.shopping_cart_update({financial_assistance:value});
+		});
+	},
+
 
 	bind_place_order: function() {
 		$(".btn-place-order").on("click", function() {
@@ -26,18 +43,61 @@ $.extend(shopping_cart, {
 		});
 	},
 
+
 	bind_request_quotation: function() {
-		$('.btn-request-for-quotation').on('click', function() {
-			shopping_cart.request_quotation(this);
+		$('.place-order').on('click','.btn-request-for-quotation', function() {
+			//do some validations first
+			const dest_country = $("#custom_destination_country");
+			const assistance = $("#financial_assistance");
+			const notes =  $("#custom_customer_notes");
+			//console.log("request_quotation, dest country: "+dest_country.val()+" fin asist?" ,assistance.prop("checked"));
+			if( ! dest_country.val()){
+				shopping_cart.set_error("Final Destination Country not set.")
+				dest_country.toggleClass('is-invalid',true);
+				dest_country.focus();
+				return;
+			}else{
+				shopping_cart.clear_error();
+				dest_country.toggleClass('is-invalid',false);
+			}
+
+			console.log("request_quotation: past valication");
+			shopping_cart.shopping_cart_update({
+					financial_assistance: assistance.prop("checked"),
+					custom_destination_country:dest_country.val(),
+					custom_customer_notes:notes.val(),
+			},()=>{
+				shopping_cart.request_quotation(this)
+					.catch(e =>{
+						const ex = e.responseJSON;
+						console.error("got exception: ",ex);
+						if(ex.exc){
+							shopping_cart.unfreeze();
+							shopping_cart.set_error(
+								(ex.exception || frappe._("Something went wrong!")).replace("frappe.exceptions.",""));
+						}
+
+					});
+				
+			});
 		});
 	},
-
 	bind_change_qty: function() {
+		console.log("GAL bind_change_qty, new version");
 		// bind update button
 		$(".cart-items").on("change", ".cart-qty", function() {
+			var btn = $(this);
+			var input = btn.closest('.number-spinner').find('input');
+			let notes = input.closest("td").siblings().find(".notes").text().trim();
 			var item_code = $(this).attr("data-item-code");
+			var name = $(this).attr("data-name");
 			var newVal = $(this).val();
-			shopping_cart.shopping_cart_update({item_code, qty: newVal});
+			shopping_cart.shopping_cart_update({
+				item_code, 
+				qty: newVal,
+				additional_notes: notes,
+				name:name
+			});
 		});
 
 		$(".cart-items").on('click', '.number-spinner button', function () {
@@ -57,14 +117,16 @@ $.extend(shopping_cart, {
 
 			let notes = input.closest("td").siblings().find(".notes").text().trim();
 			var item_code = input.attr("data-item-code");
+			var name = input.attr("data-name");
 			shopping_cart.shopping_cart_update({
 				item_code,
 				qty: newVal,
-				additional_notes: notes
+				additional_notes: notes,
+				name:name
 			});
 		});
 	},
-
+	
 	bind_change_notes: function() {
 		$('.cart-items').on('change', 'textarea', function() {
 			const $textarea = $(this);
@@ -78,18 +140,20 @@ $.extend(shopping_cart, {
 			});
 		});
 	},
-
 	bind_remove_cart_item: function() {
 		$(".cart-items").on("click", ".remove-cart-item", (e) => {
 			const $remove_cart_item_btn = $(e.currentTarget);
 			var item_code = $remove_cart_item_btn.data("item-code");
+			var name = $remove_cart_item_btn.data("name");
 
 			shopping_cart.shopping_cart_update({
 				item_code: item_code,
+				name: name,
 				qty: 0
 			});
 		});
 	},
+	
 
 	render_tax_row: function($cart_taxes, doc, shipping_rules) {
 		var shipping_selector;

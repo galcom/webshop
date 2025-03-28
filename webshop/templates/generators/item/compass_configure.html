@@ -1,0 +1,159 @@
+{% if shopping_cart and shopping_cart.cart_settings.enabled %}
+{% set cart_settings = shopping_cart.cart_settings %}
+<div>
+    <label>Radio Stations</label>
+    <input type="text" class="frequencies h-auto my-2 form-control"  placeholder="Comma seperated list of frequencies"/>
+    <span id="freq-error" class="text-danger"></span>
+
+    <label>Audio Content</label>
+    <textarea class="audio-content h-auto my-2 form-control"  placeholder="Describe the language and content type"></textarea>
+
+    <label>Color</label>
+    <select class="color my-2 form-control">
+        <option value="Blue">Blue</option>
+        <option value="Black">Black</option>
+        <option value="Green">Green</option>
+        <option value="Ivory">Ivory</option>
+        <option value="Red">Red</option>
+    </select>
+
+    <label>Capacity</label>
+    <select class="audio-length my-2 form-control" disabled>
+        <option value="8"> 8GB (500 hours, 5 bibles)</option>
+        <option value="16">16GB (1,000 hours, 10 bibles)</option>
+    </select>
+    <span id="selected_item_code"></span>
+
+
+    <!-- Add to Cart / View in Cart, Contact Us -->
+    <div class="mt-6 mb-5">
+        <div class="mb-4 d-flex">
+            <!-- Add to Cart -->
+            <a href="/cart" class="btn btn-light btn-view-in-cart hidden mr-2 font-md"
+                role="button">
+                {{  _("View in Cart") if cart_settings.enable_checkout else _("View in Quote") }}
+            </a>
+            <button class="btn btn-primary btn-add-to-cart mr-2 w-30-40" disabled >
+                <span class="mr-2">
+                    <svg class="icon icon-md">
+                        <use href="#icon-assets"></use>
+                    </svg>
+                </span>
+                {{ _("Add to Cart") if cart_settings.enable_checkout else  _("Add to Quote") }}
+            </button>
+
+        </div>
+    </div>
+
+</div>
+<script>
+    frappe.ready( () =>{
+        var selectedItemCode;
+        var audio_content;
+        var frequencies;
+        const fieldNames = ["color","audio-length","frequencies","audio-content"];
+        const guestStorageName = "guest_compass_config";
+        function attemptSelection(){
+            console.log("choosing model");
+
+            const color = $(".color").val();
+            const size = $(".audio-length").val();
+            frequencies= $(".frequencies").val();
+            const frequencyInfo = galcom.utils.checkFrequencyString(frequencies,null,",");
+
+            audio_content = $(".audio-content").val();
+            const haveAudio = audio_content != null && audio_content !== "";
+
+            console.log("attempting selection ",color,size,audio_content,frequencyInfo);
+
+            $(".audio-length").prop("disabled",! haveAudio);
+
+            if(frequencies != "" && frequencyInfo.valid === false){
+                // indicate invalid value
+                console.log("invalid frequency: ",frequencyInfo);
+                $("#freq-error").html(frequencyInfo.message || "Unknown error");
+                $(".btn-add-to-cart").prop("disabled",true);
+                return;
+            }else{
+                $("#freq-error").html(null);
+                $(".btn-add-to-cart").prop("disabled",false);
+            }
+
+            var model;
+            if(frequencyInfo.valid === true){
+                // 1 freqs => single channel, >1 freqs => multichannel
+                // audio content non-empty => player as well
+                // options: FM, MW/FM, SW/FM,  MW/SW/FM                             
+                var prefix;
+                var channels;
+                if(frequencyInfo.bands.includes("MW") && frequencyInfo.bands.includes("SW"))
+                    prefix="AF";
+                else if(frequencyInfo.bands.includes("SW"))
+                    prefix="SF";
+                else if(frequencyInfo.bands.includes("MW"))
+                    prefix="MF";
+                else if(frequencyInfo.bands.includes("FM"))
+                    prefix="FM";
+                else{
+                    console.error("unknown set of bands:",frequencyInfo.bands);
+                }
+
+                if(haveAudio)
+                    channels="P";
+                else if(frequencyInfo.count === 1)
+                    channels="S";
+                else
+                    channels="M";
+
+                model = prefix+channels;
+            }else if(haveAudio){
+                model="CPL";
+            }
+
+            if(model != null){
+                if(haveAudio)
+                    selectedItemCode = `Compass-${model}-${color}-${size}GB-P`;
+                else
+                    selectedItemCode = `Compass-${model}-${color}-P`;
+            }
+
+            $(".btn-add-to-cart ").prop("disabled",model == null);
+
+            console.log("selected: "+selectedItemCode);
+            $("#selected_item_code").text(selectedItemCode);
+
+        }
+
+        $('.btn-add-to-cart').on('click', (e) => {
+            galcom.utils.saveGuestFields(guestStorageName,fieldNames);
+			// Bind action on add to cart button
+			const $btn = $(e.currentTarget);
+			$btn.prop('disabled', true);
+			webshop.webshop.shopping_cart.update_cart({
+				item_code:selectedItemCode,
+                custom_fields: {
+                    frequencies,
+                    audio_content,
+                },
+				qty: 1,
+				callback(r) {
+					$btn.prop('disabled', false);
+					if (r.message) {
+						$('.btn-add-to-cart, .btn-view-in-cart').toggleClass('hidden');
+					}
+				}
+			});
+		});
+
+        galcom.utils.restoreGuestFields(guestStorageName,fieldNames);
+        setTimeout( attemptSelection,1000);
+
+        $(".frequencies").on("keyup",galcom.utils.delay(attemptSelection,1000));
+        $(".audio-content").on("keyup", galcom.utils.delay(attemptSelection,500));
+        $(".color").on("change", attemptSelection);
+        $(".audio-length").on("change", attemptSelection);
+
+
+    });
+</script>
+{% endif %}

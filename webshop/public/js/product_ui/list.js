@@ -87,7 +87,7 @@ webshop.ProductList = class {
 
 		if (settings.enabled) {
 			title_html += `<div class="col-4 cart-action-container ${item.in_cart ? 'd-flex' : ''}">`;
-			title_html += this.get_primary_button(item, settings);
+			//title_html += this.get_primary_button(item, settings);
 			title_html += `</div>`;
 		}
 		title_html += `</div>`;
@@ -100,6 +100,9 @@ webshop.ProductList = class {
 			<p class="product-code">
 				${ item.item_group } | Item Code : ${ item.item_code }
 			</p>
+			<div>
+			${this.get_primary_button(item, settings)}
+			</div>
 			<div class="mt-2" style="color: var(--gray-600) !important; font-size: 13px;">
 				${ item.short_description || '' }
 			</div>
@@ -163,11 +166,11 @@ webshop.ProductList = class {
 	}
 
 	get_primary_button(item, settings) {
-		if (item.has_variants) {
+		if (item.has_variants || item.item_group.includes("Player")) {
 			return `
 				<a href="/${ item.route || '#' }">
-					<div class="btn btn-sm btn-explore-variants btn mb-0 mt-0">
-						${ __('Explore') }
+					<div class="btn btn-sm btn-explore-variants btn mb-0 mt-0 ">
+						${ __('Configure') }
 					</div>
 				</a>
 			`;
@@ -177,7 +180,7 @@ webshop.ProductList = class {
 					btn-sm btn-primary btn-add-to-cart-list mb-0
 					${ item.in_cart ? 'hidden' : '' }"
 					data-item-code="${ item.item_code }"
-					style="margin-top: 0px !important; max-height: 30px; float: right;
+					style="margin-top: 0px !important; max-height: 30px; xfloat: right;
 						padding: 0.25rem 1rem; min-width: 135px;">
 					<span class="mr-2">
 						<svg class="icon icon-md">
@@ -187,14 +190,16 @@ webshop.ProductList = class {
 					${ settings.enable_checkout ? __('Add to Cart') :  __('Add to Quote') }
 				</div>
 
-				<div class="cart-indicator list-indicator ${item.in_cart ? '' : 'hidden'}">
-					1
+				<div class="cart-indicator list-indicator float-right ${item.in_cart ? '' : 'hidden'}">
+					<svg class="icon icon-md">
+						<use href="#icon-check"></use>
+					</svg>	
 				</div>
 
 				<a href="/cart">
 					<div id="${ item.name }" class="btn
 						btn-sm btn-primary btn-add-to-cart-list
-						ml-4 go-to-cart mb-0 mt-0
+						Xml-4 go-to-cart mb-0 mt-0
 						${ item.in_cart ? '' : 'hidden' }"
 						data-item-code="${ item.item_code }"
 						style="padding: 0.25rem 1rem; min-width: 135px;">

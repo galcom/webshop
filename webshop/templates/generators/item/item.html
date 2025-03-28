@@ -10,7 +10,7 @@
 {% endblock %}
 
 {% block page_content %}
-<div class="product-container item-main">
+<div class="product-container item-main galcom-class">
 	{% from "webshop/templates/includes/macros.html" import product_image %}
 	<div class="item-content">
 		<div class="product-page-content" itemscope itemtype="http://schema.org/Product">
@@ -33,6 +33,8 @@
 	<div class="product-container mt-4 {{ padding_top }} {{ info_col }}">
 		<div class="item-content {{ 'mt-minus-2' if (show_tabs and tabs) else '' }}">
 			<div class="product-page-content" itemscope itemtype="http://schema.org/Product">
+
+
 				<!-- Product Specifications Table Section -->
 				{% if show_tabs and tabs %}
 					<div class="category-tabs">
@@ -44,9 +46,6 @@
 				{% elif website_specifications %}
 					{% include "templates/generators/item/item_specifications.html"%}
 				{% endif %}
-
-				<!-- Advanced Custom Website Content -->
-				{{ doc.website_content or '' }}
 
 				<!-- Reviews and Comments -->
 				{% if shopping_cart.cart_settings.enable_reviews and not doc.has_variants %}
@@ -71,10 +70,18 @@
 </div>
 {% endblock %}
 
+{% block script %}
+<script>
+    
+    frappe.boot = {{ boot }}
+</script>
+{% endblock %}
+ 
 {% block base_scripts %}
 <!-- js should be loaded in body! -->
 <script type="text/javascript" src="/assets/frappe/js/lib/jquery/jquery.min.js"></script>
 {{ include_script("frappe-web.bundle.js") }}
+{{ include_script("bootstrap-4-web.bundle.js") }}
 {{ include_script("controls.bundle.js") }}
 {{ include_script("dialog.bundle.js") }}
 {% endblock %}

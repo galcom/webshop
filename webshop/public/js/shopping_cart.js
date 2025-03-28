@@ -75,6 +75,7 @@ $.extend(shopping_cart, {
 	},
 
 	update_cart: function(opts) {
+		console.log("GAL update_cart, new version",opts);
 		if (frappe.session.user==="Guest") {
 			if (localStorage) {
 				localStorage.setItem("last_visited", window.location.pathname);
@@ -83,7 +84,7 @@ $.extend(shopping_cart, {
 				window.location.href = res.message || "/login";
 			});
 		} else {
-			shopping_cart.freeze();
+			//shopping_cart.freeze();
 			return frappe.call({
 				type: "POST",
 				method: "webshop.webshop.shopping_cart.cart.update_cart",
@@ -91,11 +92,13 @@ $.extend(shopping_cart, {
 					item_code: opts.item_code,
 					qty: opts.qty,
 					additional_notes: opts.additional_notes !== undefined ? opts.additional_notes : undefined,
-					with_items: opts.with_items || 0
+					with_items: opts.with_items || 0,
+					name: opts.name,
+					custom_fields: opts.custom_fields
 				},
 				btn: opts.btn,
 				callback: function(r) {
-					shopping_cart.unfreeze();
+					//shopping_cart.unfreeze();
 					shopping_cart.set_cart_count(true);
 					if(opts.callback)
 						opts.callback(r);
@@ -103,7 +106,7 @@ $.extend(shopping_cart, {
 			});
 		}
 	},
-
+	
 	set_cart_count: function(animate=false) {
 		$(".intermediate-empty-cart").remove();
 
@@ -151,12 +154,19 @@ $.extend(shopping_cart, {
 		}
 	},
 
-	shopping_cart_update: function({item_code, qty, cart_dropdown, additional_notes}) {
+	shopping_cart_update: function({item_code, qty, cart_dropdown, additional_notes,
+								name,financial_assistance,custom_destination_country,custom_customer_notes},callback) {
 		shopping_cart.update_cart({
 			item_code,
 			qty,
 			additional_notes,
 			with_items: 1,
+			name:name,
+			custom_fields: {
+				financial_assistance:financial_assistance,
+				custom_destination_country: custom_destination_country,
+				custom_customer_notes: custom_customer_notes,
+			},
 			btn: this,
 			callback: function(r) {
 				if(!r.exc) {
@@ -168,6 +178,8 @@ $.extend(shopping_cart, {
 					if (cart_dropdown != true) {
 						$(".cart-icon").hide();
 					}
+					if(callback) 
+						callback();
 				}
 			},
 		});
@@ -187,32 +199,39 @@ $.extend(shopping_cart, {
 		button.addClass(add);
 	},
 
-	bind_add_to_cart_action() {
-		$('.page_content').on('click', '.btn-add-to-cart-list', (e) => {
-			const $btn = $(e.currentTarget);
-			$btn.prop('disabled', true);
+	bind_add_to_cart_action: function(){
+		console.log(" OVERRIDDEN bind_action_to_cart_action");
+		$('.page_content').
+			on('click', ".btn-add-to-cart-list", (e) => {
 
-			if (frappe.session.user==="Guest") {
-				if (localStorage) {
-					localStorage.setItem("last_visited", window.location.pathname);
+				console.log("Click on add-to-cart ----------");
+				const $btn = $(e.currentTarget);
+				if($btn.hasClass("go-to-cart")|| $btn.hasClass("go-to-cart-grid"))
+					return;
+				$btn.prop('disabled', true);
+				console.log("target: ",$btn);
+
+				if (frappe.session.user==="Guest") {
+					if (localStorage) {
+						localStorage.setItem("last_visited", window.location.pathname);
+					}
+					frappe.call('webshop.webshop.api.get_guest_redirect_on_action').then((res) => {
+						window.location.href = res.message || "/login";
+					});
+					return;
 				}
-				frappe.call('webshop.webshop.api.get_guest_redirect_on_action').then((res) => {
-					window.location.href = res.message || "/login";
+
+				$btn.addClass('hidden');
+				$btn.closest('.cart-action-container').addClass('d-flex');
+				$btn.parent().find('.go-to-cart').removeClass('hidden');
+				$btn.parent().find('.go-to-cart-grid').removeClass('hidden');
+				$btn.parent().find('.cart-indicator').removeClass('hidden');
+
+				const item_code = $btn.data('item-code');
+				webshop.webshop.shopping_cart.update_cart({
+					item_code,
+					qty: 1
 				});
-				return;
-			}
-
-			$btn.addClass('hidden');
-			$btn.closest('.cart-action-container').addClass('d-flex');
-			$btn.parent().find('.go-to-cart').removeClass('hidden');
-			$btn.parent().find('.go-to-cart-grid').removeClass('hidden');
-			$btn.parent().find('.cart-indicator').removeClass('hidden');
-
-			const item_code = $btn.data('item-code');
-			webshop.webshop.shopping_cart.update_cart({
-				item_code,
-				qty: 1
-			});
 
 		});
 	},
