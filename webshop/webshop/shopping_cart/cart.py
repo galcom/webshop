@@ -102,11 +102,9 @@ def place_order():
 	if not (quotation.shipping_address_name or quotation.customer_address):
 		frappe.throw(_("Set Shipping Address or Billing Address"))
 
-	customer_group = cart_settings.default_customer_group
-
 	sales_order = frappe.get_doc(
 		_make_sales_order(
-			quotation.name, customer_group=customer_group, ignore_permissions=True
+			quotation.name, ignore_permissions=True
 		)
 	)
 	sales_order.payment_schedule = []
@@ -557,9 +555,17 @@ def get_party(user=None):
 		debtors_account = get_debtors_account(cart_settings)
 
 	if party:
-		return frappe.get_doc(party_doctype, party)
+		doc = frappe.get_doc(party_doctype, party)
+		if doc.doctype in ["Customer", "Supplier"]:
+			if not frappe.db.exists("Portal User", {"parent": doc.name, "user": user}):
+				doc.append("portal_users", {"user": user})
+				doc.flags.ignore_permissions = True
+				doc.flags.ignore_mandatory = True
+				doc.save()
 
-	else:
+		return doc
+
+	elif not frappe.db.exists("Portal User", {"user": user}):
 		if not cart_settings.enabled:
 			frappe.local.flags.redirect_location = "/contact"
 			raise frappe.Redirect
@@ -597,6 +603,13 @@ def get_party(user=None):
 		contact.insert(ignore_permissions=True)
 
 		return customer
+	else:
+		customer = frappe.db.get_value(
+			"Portal User", {"user": user}, ["parent"]
+		)
+
+		if frappe.db.exists("Customer", customer):
+			return frappe.get_doc("Customer", customer)
 
 
 def get_debtors_account(cart_settings):
