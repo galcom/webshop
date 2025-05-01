@@ -17,6 +17,17 @@
 			<input class="form-control" id="custom_destination_country" value="{{ doc.custom_destination_country or '' }}"/>
 		</div>
 
+		{% for address in shipping_addresses|selectattr("name","equalto",doc.shipping_address_name) %}
+		{% if "United States" in address.display %}
+		<div class="form-group" id="tax_id_field">
+			<label for="tax_id">Tax ID</label>
+			<input class="form-control" id="tax_id" value="{{ tax_id or '' }}"/>
+			<p class="text-muted"> {{ _("Required for organizations") }} </p>
+		</div>
+		{% endif %}
+		{% endfor %}
+
+
 		<div class="form-group">
 			<label for="custom_customer_notes">Notes</label>
 			<textarea class="form-control" id="custom_customer_notes" value="{{ doc.custom_customer_notes or '' }}"></textarea>

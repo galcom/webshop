@@ -90,6 +90,8 @@
                     prefix="AF";
                 else if(frequencyInfo.bands.includes("SW"))
                     prefix="SF";
+                else if(frequencyInfo.bands.includes("MW") && frequencyInfo.bands.length === 1)
+                    prefix="MW";
                 else if(frequencyInfo.bands.includes("MW"))
                     prefix="MF";
                 else if(frequencyInfo.bands.includes("FM"))

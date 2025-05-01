@@ -52,6 +52,7 @@ def get_cart_quotation(doc=None):
 		"billing_addresses": get_billing_addresses(party),
 		"shipping_rules": get_applicable_shipping_rules(party),
 		"cart_settings": frappe.get_cached_doc("Webshop Settings"),
+		"tax_id":party.get("tax_id",None),
 	}
 
 
@@ -154,7 +155,8 @@ def request_for_quotation():
 
 @frappe.whitelist()
 def update_cart(item_code=None, qty=None, additional_notes=None, with_items=False,custom_fields=None,name=None):
-    logger=frappe.logger()
+    logger=frappe.logger("webshop")
+    logger.setLevel("DEBUG")
     logger.debug(f"in update_cart. item: {item_code} name: {name}")
     logger.debug("custom_fields string: "+str(custom_fields))
     quotation = _get_cart_quotation()
@@ -207,6 +209,13 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
             quotation.set("custom_destination_country",custom_fields["custom_destination_country"])
         if custom_fields and "custom_customer_notes" in  custom_fields:
             quotation.set("custom_customer_notes",custom_fields["custom_customer_notes"])
+        if custom_fields and "tax_id" in  custom_fields:
+            #fetch customer record and update there
+            customer = frappe.get_doc("Customer",quotation.party_name)
+            tax_id = custom_fields.get("tax_id",None)
+            if customer and tax_id and tax_id.strip() != "": 
+                customer.set("tax_id",tax_id)
+                customer.save()
 
 
     apply_cart_settings(quotation=quotation)
@@ -336,6 +345,9 @@ def update_cart_address(address_type, address_name):
 		),
 		"address": frappe.render_template(
 			"templates/includes/cart/address_card.html", context
+		),
+		"order_options": frappe.render_template(
+			"templates/includes/cart/cart_order_options.html", context
 		),
 	}
 

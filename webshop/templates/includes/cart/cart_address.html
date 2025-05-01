@@ -217,6 +217,7 @@ frappe.ready(() => {
 								shopping_cart.parent.find(
 									`.address-container[data-address-type="${address_type}"]`
 								).html(r.message.address);
+								$(".order-options").html(r.message.order_options);
 							}
 						}
 					});

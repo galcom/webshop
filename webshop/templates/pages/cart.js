@@ -50,7 +50,8 @@ $.extend(shopping_cart, {
 			const dest_country = $("#custom_destination_country");
 			const assistance = $("#financial_assistance");
 			const notes =  $("#custom_customer_notes");
-			//console.log("request_quotation, dest country: "+dest_country.val()+" fin asist?" ,assistance.prop("checked"));
+			const taxId=  $("#tax_id");
+			console.log("request_quotation, dest country: "+dest_country.val()+" fin asist?" ,assistance.prop("checked"),taxId.val());
 			if( ! dest_country.val()){
 				shopping_cart.set_error("Final Destination Country not set.")
 				dest_country.toggleClass('is-invalid',true);
@@ -66,6 +67,7 @@ $.extend(shopping_cart, {
 					financial_assistance: assistance.prop("checked"),
 					custom_destination_country:dest_country.val(),
 					custom_customer_notes:notes.val(),
+					tax_id: taxId.val()
 			},()=>{
 				shopping_cart.request_quotation(this)
 					.catch(e =>{
