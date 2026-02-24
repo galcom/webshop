@@ -194,6 +194,27 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
                     for k in custom_fields:
                         logger.debug("adding custom field "+k+", "+custom_fields[k])
                         args[k] = custom_fields[k]
+
+                # If streamer fields are present, create a Streamer Configuration and link it
+                if custom_fields and custom_fields.get("streamer_station_name"):
+                    streamer_config = frappe.new_doc("Streamer Configuration")
+                    streamer_config.station_name = custom_fields["streamer_station_name"]
+                    streamer_config.website = custom_fields.get("streamer_website", "")
+                    streamer_config.image = custom_fields.get("streamer_logo", "")
+                    streamer_config.description = custom_fields.get("streamer_description", "")
+                    streamer_config.network_connection_type = custom_fields.get("streamer_network_connection_type", "LAN")
+                    streamer_config.ssid = custom_fields.get("streamer_ssid", "")
+                    streamer_config.password = custom_fields.get("streamer_password", "")
+                    streamer_config.insert(ignore_permissions=True)
+                    args["custom_streamer_configuration"] = streamer_config.name
+                    # Remove raw streamer fields so they aren't set on the Quotation Item
+                    args.pop("streamer_station_name", None)
+                    args.pop("streamer_website", None)
+                    args.pop("streamer_logo", None)
+                    args.pop("streamer_description", None)
+                    args.pop("streamer_network_connection_type", None)
+                    args.pop("streamer_ssid", None)
+                    args.pop("streamer_password", None)
                 
                 quotation.append("items",args )
                 frappe.msgprint(f"Item Added to Cart",alert=True,indicator="green")

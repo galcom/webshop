@@ -166,7 +166,7 @@ webshop.ProductList = class {
 	}
 
 	get_primary_button(item, settings) {
-		if (item.has_variants || item.item_group.includes("Player")) {
+		if (item.has_variants || item.item_group.includes("Player") || item.item_code === "STR-STMR-01") {
 			return `
 				<a href="/${ item.route || '#' }">
 					<div class="btn btn-sm btn-explore-variants btn mb-0 mt-0 ">

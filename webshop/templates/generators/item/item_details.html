@@ -39,6 +39,8 @@
 		{% include "templates/generators/item/compass_configure.html" %}
 	{% elif doc.item_group == "Envoy Players" %}
 		{% include "templates/generators/item/envoy_configuration.html" %}
+	{% elif doc.item_code == "STR-STMR-01" %}
+		{% include "templates/generators/item/streamer_configure.html" %}
 	{% elif has_variants %}
 		<!-- configure template -->
 		{% include "templates/generators/item/item_configure.html" %}

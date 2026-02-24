@@ -1,0 +1,160 @@
+{% if shopping_cart and shopping_cart.cart_settings.enabled %}
+{% set cart_settings = shopping_cart.cart_settings %}
+<div>
+    <label>Station Name</label>
+    <input type="text" class="station-name h-auto my-2 form-control" placeholder="Name of the radio station"/>
+
+    <label>Website</label>
+    <input type="text" class="station-website h-auto my-2 form-control" placeholder="Station website URL"/>
+
+    <label>Station Logo</label>
+    <div class="my-2">
+        <input type="file" class="station-logo form-control" accept="image/*"/>
+        <small class="text-muted">Upload an image file for the station logo (optional)</small>
+        <div class="station-logo-preview mt-2" style="display:none;">
+            <img src="" alt="Logo preview" style="max-height:100px;"/>
+        </div>
+    </div>
+
+    <label>Description</label>
+    <textarea class="station-description h-auto my-2 form-control" rows="3" placeholder="Description of the station"></textarea>
+
+    <label>Network Connection Type</label>
+    <select class="network-connection-type h-auto my-2 form-control">
+        <option value="Cable">Cable</option>
+        <option value="WiFi">WiFi</option>
+    </select>
+
+    <div class="wifi-fields" style="display:none;">
+        <label>SSID</label>
+        <input type="text" class="wifi-ssid h-auto my-2 form-control" placeholder="WiFi network name"/>
+
+        <label>Password</label>
+        <input type="text" class="wifi-password h-auto my-2 form-control" placeholder="WiFi password"/>
+    </div>
+
+    <!-- Add to Cart / View in Cart -->
+    <div class="mt-6 mb-5">
+        <div class="mb-4 d-flex">
+            <a href="/cart" class="btn btn-light btn-view-in-cart hidden mr-2 font-md"
+                role="button">
+                {{ _("View in Cart") if cart_settings.enable_checkout else _("View in Quote") }}
+            </a>
+            <button class="btn btn-primary btn-add-to-cart mr-2 w-30-40" disabled>
+                <span class="mr-2">
+                    <svg class="icon icon-md">
+                        <use href="#icon-assets"></use>
+                    </svg>
+                </span>
+                {{ _("Add to Cart") if cart_settings.enable_checkout else _("Add to Quote") }}
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+    frappe.ready(() => {
+        const fieldNames = ["station-name", "station-website", "station-description", "wifi-ssid", "wifi-password"];
+        const guestStorageName = "guest_streamer_config";
+
+        function validate() {
+            const stationName = $(".station-name").val().trim();
+            $(".btn-add-to-cart").prop("disabled", stationName === "");
+        }
+
+        $(".station-name").on("keyup", galcom.utils.delay(validate, 300));
+        $(".station-website").on("keyup", galcom.utils.delay(validate, 300));
+
+        // Toggle WiFi fields based on network connection type
+        $(".network-connection-type").on("change", function() {
+            $(".wifi-fields").toggle($(this).val() === "WiFi");
+        });
+
+        // Show image preview when file is selected
+        $(".station-logo").on("change", function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    $(".station-logo-preview img").attr("src", e.target.result);
+                    $(".station-logo-preview").show();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                $(".station-logo-preview").hide();
+            }
+        });
+
+        function uploadLogo() {
+            const fileInput = $(".station-logo")[0];
+            if (!fileInput.files || !fileInput.files[0]) {
+                return Promise.resolve(null);
+            }
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append("file", file, file.name);
+            formData.append("is_private", "0");
+            formData.append("folder", "Home");
+
+            return $.ajax({
+                type: "POST",
+                url: "/api/method/upload_file",
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    "X-Frappe-CSRF-Token": frappe.csrf_token,
+                },
+            }).then((r) => {
+                return r.message ? r.message.file_url : null;
+            });
+        }
+
+        $(".btn-add-to-cart").on("click", async (e) => {
+            galcom.utils.saveGuestFields(guestStorageName, fieldNames);
+            const $btn = $(e.currentTarget);
+            $btn.prop("disabled", true);
+
+            const station_name = $(".station-name").val().trim();
+            const website = $(".station-website").val().trim();
+            const description = $(".station-description").val().trim();
+            const network_type = $(".network-connection-type").val();
+            const ssid = $(".wifi-ssid").val().trim();
+            const password = $(".wifi-password").val().trim();
+
+            let logo_url = null;
+            try {
+                logo_url = await uploadLogo();
+            } catch (err) {
+                console.error("Logo upload failed:", err);
+            }
+
+            const custom_fields = {
+                streamer_station_name: station_name,
+                streamer_website: website,
+                streamer_description: description,
+                streamer_network_connection_type: network_type,
+                streamer_ssid: ssid,
+                streamer_password: password,
+            };
+            if (logo_url) {
+                custom_fields.streamer_logo = logo_url;
+            }
+
+            webshop.webshop.shopping_cart.update_cart({
+                item_code: "{{ doc.item_code }}",
+                custom_fields: custom_fields,
+                qty: 1,
+                callback(r) {
+                    $btn.prop("disabled", false);
+                    if (r.message) {
+                        $(".btn-add-to-cart, .btn-view-in-cart").toggleClass("hidden");
+                    }
+                }
+            });
+        });
+
+        galcom.utils.restoreGuestFields(guestStorageName, fieldNames);
+        setTimeout(validate, 1000);
+    });
+</script>
+{% endif %}
