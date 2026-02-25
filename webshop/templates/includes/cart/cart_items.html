@@ -35,6 +35,18 @@
 				<div class="d-flex w-100" style="flex-direction: column;">
 					<div class="item-title mb-1 mr-3">
 						{{ d.get("web_item_name") or d.item_name }}
+						{%- set d_item_group = frappe.db.get_value('Item', d.item_code, 'item_group') %}
+						{% if d_item_group and ("Player" in d_item_group or d.item_code == "STR-STMR-01") %}
+							{%- set edit_route = frappe.db.get_value('Website Item', {'item_code': d.item_code}, 'route')
+								or frappe.db.get_value('Website Item', {'item_code': frappe.db.get_value('Item', d.item_code, 'variant_of') or d.item_code}, 'route') %}
+							{% if edit_route %}
+							<a href="/{{ edit_route }}?edit={{ d.name }}" class="ml-2" title="{{ _('Edit Configuration') }}">
+								<svg class="icon icon-sm" style="vertical-align: text-bottom;">
+									<use href="#icon-edit"></use>
+								</svg>
+							</a>
+							{% endif %}
+						{% endif %}
 					</div>
 					<div class="item-subtitle mr-2">
 						{{ d.item_code }}
@@ -51,6 +63,14 @@
 					{{ d.frequencies or "" }}
 					<br>
 					{{ d.audio_content or "" }}
+					{% if d.item_code == "STR-STMR-01" and d.get("custom_streamer_configuration") %}
+						{%- set sc_station = frappe.db.get_value('Streamer Configuration', d.custom_streamer_configuration, 'station_name') %}
+						{% if sc_station %}
+						<div class="item-subtitle mt-1">
+							{{ _('Station:') }} {{ sc_station }}
+						</div>
+						{% endif %}
+					{% endif %}
 
 					<div class="mt-2 notes hidden">
 						<textarea data-item-code="{{d.item_code}}" class="form-control" rows="2" placeholder="{{ _('Add notes') }}">

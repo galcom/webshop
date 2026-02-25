@@ -3,7 +3,7 @@
 <div>
 
     <label>Audio Content</label>
-    <textarea class="audio-content h-auto my-2 form-control"  placeholder="Describe the language and content type"></textarea>
+    <textarea class="audio-content h-auto mb-4 form-control"  placeholder="Describe the language and content type"></textarea>
 
     <!-- Add to Cart / View in Cart, Contact Us -->
     <div class="mt-6 mb-5">
@@ -21,6 +21,14 @@
                 </span>
                 {{ _("Add to Cart") if cart_settings.enable_checkout else  _("Add to Quote") }}
             </button>
+            <button class="btn btn-primary btn-update-quote mr-2 w-30-40 hidden">
+                <span class="mr-2">
+                    <svg class="icon icon-md">
+                        <use href="#icon-assets"></use>
+                    </svg>
+                </span>
+                {{ _("Update Cart") if cart_settings.enable_checkout else _("Update Quote") }}
+            </button>
 
         </div>
     </div>
@@ -32,6 +40,17 @@
         const fieldNames = ["audio-content"];
         const guestStorageName = "guest_envoy_config";
 
+        // Detect edit mode from URL query param
+        const urlParams = new URLSearchParams(window.location.search);
+        const editItemName = urlParams.get("edit");
+        const isEditMode = !!editItemName;
+
+        if (isEditMode) {
+            $(".btn-add-to-cart").addClass("hidden");
+            $(".btn-view-in-cart").addClass("hidden");
+            $(".btn-update-quote").removeClass("hidden");
+        }
+
         const haveAudio = function(){
             audio_content = $(".audio-content").val();
             return audio_content != null && audio_content !== "";
@@ -39,6 +58,7 @@
         $(".audio-content").on("keyup", galcom.utils.delay(()=>{
 
             $(".btn-add-to-cart").prop("disabled",! haveAudio());
+            $(".btn-update-quote").prop("disabled",! haveAudio());
         },500));
 
         $('.btn-add-to-cart').on('click', (e) => {
@@ -62,7 +82,39 @@
 			});
 		});
 
-        galcom.utils.restoreGuestFields(guestStorageName,fieldNames);
+        // Update Quote button handler (edit mode)
+        $('.btn-update-quote').on('click', (e) => {
+            const $btn = $(e.currentTarget);
+            $btn.prop('disabled', true);
+            webshop.webshop.shopping_cart.update_cart({
+                item_code: "{{ doc.item_code }}",
+                custom_fields: {
+                    audio_content,
+                },
+                qty: 1,
+                name: editItemName,
+                callback(r) {
+                    $btn.prop('disabled', false);
+                    window.location.href = "/cart";
+                }
+            });
+        });
+
+        // In edit mode, load existing configuration
+        if (isEditMode) {
+            frappe.call({
+                method: "webshop.webshop.shopping_cart.cart.get_item_configuration",
+                args: { quotation_item_name: editItemName },
+                callback(r) {
+                    if (r.message) {
+                        $(".audio-content").val(r.message.audio_content || "");
+                        $(".btn-update-quote").prop("disabled", !haveAudio());
+                    }
+                }
+            });
+        } else {
+            galcom.utils.restoreGuestFields(guestStorageName,fieldNames);
+        }
         $(".btn-add-to-cart").prop("disabled",! haveAudio());
 
      });

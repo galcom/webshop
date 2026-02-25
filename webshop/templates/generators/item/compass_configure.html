@@ -2,27 +2,29 @@
 {% set cart_settings = shopping_cart.cart_settings %}
 <div>
     <label>Radio Stations</label>
-    <input type="text" class="frequencies h-auto my-2 form-control"  placeholder="Comma seperated list of frequencies"/>
+    <input type="text" class="frequencies h-auto mb-4 form-control"  placeholder="Comma seperated list of frequencies"/>
     <span id="freq-error" class="text-danger"></span>
 
     <label>Audio Content</label>
-    <textarea class="audio-content h-auto my-2 form-control"  placeholder="Describe the language and content type"></textarea>
+    <textarea class="audio-content h-auto mb-4 form-control"  placeholder="Describe the language and content type"></textarea>
 
-    <label>Color</label>
-    <select class="color my-2 form-control">
-        <option value="Blue">Blue</option>
-        <option value="Black">Black</option>
-        <option value="Green">Green</option>
-        <option value="Ivory">Ivory</option>
-        <option value="Red">Red</option>
-    </select>
+    <div class="color-size-fields">
+        <label>Color</label>
+        <select class="color mb-4 form-control">
+            <option value="Blue">Blue</option>
+            <option value="Black">Black</option>
+            <option value="Green">Green</option>
+            <option value="Ivory">Ivory</option>
+            <option value="Red">Red</option>
+        </select>
 
-    <label>Capacity</label>
-    <select class="audio-length my-2 form-control" disabled>
-        <option value="8"> 8GB (500 hours, 5 bibles)</option>
-        <option value="16">16GB (1,000 hours, 10 bibles)</option>
-    </select>
-    <span id="selected_item_code"></span>
+        <label>Capacity</label>
+        <select class="audio-length mb-4 form-control" disabled>
+            <option value="8"> 8GB (500 hours, 5 bibles)</option>
+            <option value="16">16GB (1,000 hours, 10 bibles)</option>
+        </select>
+        <span id="selected_item_code"></span>
+    </div>
 
 
     <!-- Add to Cart / View in Cart, Contact Us -->
@@ -41,6 +43,14 @@
                 </span>
                 {{ _("Add to Cart") if cart_settings.enable_checkout else  _("Add to Quote") }}
             </button>
+            <button class="btn btn-primary btn-update-quote mr-2 w-30-40 hidden">
+                <span class="mr-2">
+                    <svg class="icon icon-md">
+                        <use href="#icon-assets"></use>
+                    </svg>
+                </span>
+                {{ _("Update Cart") if cart_settings.enable_checkout else _("Update Quote") }}
+            </button>
 
         </div>
     </div>
@@ -53,6 +63,19 @@
         var frequencies;
         const fieldNames = ["color","audio-length","frequencies","audio-content"];
         const guestStorageName = "guest_compass_config";
+
+        // Detect edit mode from URL query param
+        const urlParams = new URLSearchParams(window.location.search);
+        const editItemName = urlParams.get("edit");
+        const isEditMode = !!editItemName;
+
+        if (isEditMode) {
+            $(".btn-add-to-cart").addClass("hidden");
+            $(".btn-view-in-cart").addClass("hidden");
+            $(".btn-update-quote").removeClass("hidden");
+            $(".color-size-fields").hide();
+        }
+
         function attemptSelection(){
             console.log("choosing model");
 
@@ -120,6 +143,7 @@
             }
 
             $(".btn-add-to-cart ").prop("disabled",model == null);
+            $(".btn-update-quote").prop("disabled",model == null);
 
             console.log("selected: "+selectedItemCode);
             $("#selected_item_code").text(selectedItemCode);
@@ -147,7 +171,54 @@
 			});
 		});
 
-        galcom.utils.restoreGuestFields(guestStorageName,fieldNames);
+        // Update Quote button handler (edit mode)
+        $('.btn-update-quote').on('click', (e) => {
+            const $btn = $(e.currentTarget);
+            $btn.prop('disabled', true);
+            webshop.webshop.shopping_cart.update_cart({
+                item_code: selectedItemCode,
+                custom_fields: {
+                    frequencies,
+                    audio_content,
+                },
+                qty: 1,
+                name: editItemName,
+                callback(r) {
+                    $btn.prop('disabled', false);
+                    window.location.href = "/cart";
+                }
+            });
+        });
+
+        // In edit mode, load existing configuration
+        if (isEditMode) {
+            frappe.call({
+                method: "webshop.webshop.shopping_cart.cart.get_item_configuration",
+                args: { quotation_item_name: editItemName },
+                callback(r) {
+                    if (r.message) {
+                        const cfg = r.message;
+                        $(".frequencies").val(cfg.frequencies || "");
+                        $(".audio-content").val(cfg.audio_content || "");
+                        // Try to parse color and size from item_code
+                        const code = cfg.item_code || "";
+                        const parts = code.split("-");
+                        if (parts.length >= 3) {
+                            $(".color").val(parts[2]);
+                        }
+                        if (parts.length >= 4) {
+                            const sizeMatch = parts[3].match(/(\d+)GB/);
+                            if (sizeMatch) {
+                                $(".audio-length").val(sizeMatch[1]);
+                            }
+                        }
+                        attemptSelection();
+                    }
+                }
+            });
+        } else {
+            galcom.utils.restoreGuestFields(guestStorageName,fieldNames);
+        }
         setTimeout( attemptSelection,1000);
 
         $(".frequencies").on("keyup",galcom.utils.delay(attemptSelection,1000));
