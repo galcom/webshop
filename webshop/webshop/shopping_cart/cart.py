@@ -154,6 +154,30 @@ def request_for_quotation():
 	return quotation.name
 
 @frappe.whitelist()
+def get_item_configuration(quotation_item_name):
+    """Return the configuration data for a quotation item so it can be edited."""
+    quotation = _get_cart_quotation()
+    result = {}
+    for item in quotation.get("items"):
+        if item.name == quotation_item_name:
+            result["item_code"] = item.item_code
+            result["frequencies"] = item.get("frequencies") or ""
+            result["audio_content"] = item.get("audio_content") or ""
+            # Streamer Configuration
+            sc_name = item.get("custom_streamer_configuration")
+            if sc_name:
+                sc = frappe.get_doc("Streamer Configuration", sc_name)
+                result["streamer_station_name"] = sc.station_name or ""
+                result["streamer_website"] = sc.website or ""
+                result["streamer_description"] = sc.description or ""
+                result["streamer_network_connection_type"] = sc.network_connection_type or "Cable"
+                result["streamer_ssid"] = sc.ssid or ""
+                result["streamer_password"] = sc.password or ""
+                result["streamer_logo"] = sc.image or ""
+            return result
+    frappe.throw("Quotation item not found")
+
+@frappe.whitelist()
 def update_cart(item_code=None, qty=None, additional_notes=None, with_items=False,custom_fields=None,name=None):
     logger=frappe.logger("webshop")
     logger.setLevel("DEBUG")
@@ -222,6 +246,30 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
                 logger.debug("quote item name: "+quotation_items[0].name)
                 quotation_items[0].qty = qty
                 quotation_items[0].additional_notes = additional_notes
+                # Update custom fields on existing item if provided
+                if custom_fields:
+                    qi = quotation_items[0]
+                    # Update frequencies / audio_content
+                    if "frequencies" in custom_fields:
+                        qi.frequencies = custom_fields["frequencies"]
+                    if "audio_content" in custom_fields:
+                        qi.audio_content = custom_fields["audio_content"]
+                    # Update Streamer Configuration if streamer fields present
+                    if custom_fields.get("streamer_station_name"):
+                        sc_name = qi.get("custom_streamer_configuration")
+                        if sc_name:
+                            sc = frappe.get_doc("Streamer Configuration", sc_name)
+                        else:
+                            sc = frappe.new_doc("Streamer Configuration")
+                        sc.station_name = custom_fields["streamer_station_name"]
+                        sc.website = custom_fields.get("streamer_website", "")
+                        sc.image = custom_fields.get("streamer_logo", "") or sc.image
+                        sc.description = custom_fields.get("streamer_description", "")
+                        sc.network_connection_type = custom_fields.get("streamer_network_connection_type", "Cable")
+                        sc.ssid = custom_fields.get("streamer_ssid", "")
+                        sc.password = custom_fields.get("streamer_password", "")
+                        sc.save(ignore_permissions=True)
+                        qi.custom_streamer_configuration = sc.name
     else:  #quotation wide settings
         if custom_fields and "financial_assistance" in  custom_fields:
             logger.debug("financial assistance set to: "+str(custom_fields["financial_assistance"]))

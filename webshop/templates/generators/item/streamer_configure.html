@@ -2,35 +2,40 @@
 {% set cart_settings = shopping_cart.cart_settings %}
 <div>
     <label>Station Name</label>
-    <input type="text" class="station-name h-auto my-2 form-control" placeholder="Name of the radio station"/>
+    <input type="text" class="station-name h-auto  form-control" placeholder="Name of the radio station"/>
+    <small class="text-muted d-block mb-4">This will be the publicly visible name of your radio station.</small>
 
     <label>Website</label>
-    <input type="text" class="station-website h-auto my-2 form-control" placeholder="Station website URL"/>
+    <input type="text" class="station-website h-auto form-control" placeholder="Station website URL"/>
+    <small class="text-muted d-block mb-4">This link will be active when clicking the logo in the listening app.</small>
 
     <label>Station Logo</label>
-    <div class="my-2">
-        <input type="file" class="station-logo form-control" accept="image/*"/>
-        <small class="text-muted">Upload an image file for the station logo (optional)</small>
-        <div class="station-logo-preview mt-2" style="display:none;">
+    <div class="">
+        <input type="file" class="station-logo form-control h-auto" accept="image/*" style="padding: .375rem .75rem;"/>
+        <small class="text-muted ">Upload your station logo as a square image. Should be at least 500x500 pixels.</small>
+        <div class="station-logo-preview mt-2 mb-4" style="display:none;">
             <img src="" alt="Logo preview" style="max-height:100px;"/>
         </div>
     </div>
+    <div class="mb-4">  </div>
 
     <label>Description</label>
-    <textarea class="station-description h-auto my-2 form-control" rows="3" placeholder="Description of the station"></textarea>
+    <textarea class="station-description h-auto form-control" rows="3" placeholder="Description of the station"></textarea>
+    <small class="text-muted d-block mb-4">This description will be shown on the radio station list on our website (but not in the listening app).</small>
 
     <label>Network Connection Type</label>
-    <select class="network-connection-type h-auto my-2 form-control">
+    <select class="network-connection-type form-control">
         <option value="Cable">Cable</option>
-        <option value="WiFi">WiFi</option>
+        <option value="Wi-Fi">WiFi</option>
     </select>
+    <small class="text-muted d-block mb-4">Specify whether you want your Streamer to connect to the internet via WiFi or a wired (cable) connection (wired is preferred).</small>
 
     <div class="wifi-fields" style="display:none;">
         <label>SSID</label>
-        <input type="text" class="wifi-ssid h-auto my-2 form-control" placeholder="WiFi network name"/>
+        <input type="text" class="wifi-ssid h-auto mb-4 form-control" placeholder="WiFi network name"/>
 
         <label>Password</label>
-        <input type="text" class="wifi-password h-auto my-2 form-control" placeholder="WiFi password"/>
+        <input type="text" class="wifi-password h-auto mb-4 form-control" placeholder="WiFi password"/>
     </div>
 
     <!-- Add to Cart / View in Cart -->
@@ -48,17 +53,39 @@
                 </span>
                 {{ _("Add to Cart") if cart_settings.enable_checkout else _("Add to Quote") }}
             </button>
+            <button class="btn btn-primary btn-update-quote mr-2 w-30-40 hidden">
+                <span class="mr-2">
+                    <svg class="icon icon-md">
+                        <use href="#icon-assets"></use>
+                    </svg>
+                </span>
+                {{ _("Update Cart") if cart_settings.enable_checkout else _("Update Quote") }}
+            </button>
         </div>
     </div>
 </div>
 <script>
     frappe.ready(() => {
-        const fieldNames = ["station-name", "station-website", "station-description", "wifi-ssid", "wifi-password"];
+        const fieldNames = ["station-name", "station-website", "station-description", "network-connection-type", "wifi-ssid", "wifi-password"];
         const guestStorageName = "guest_streamer_config";
+
+        // Detect edit mode from URL query param
+        const urlParams = new URLSearchParams(window.location.search);
+        const editItemName = urlParams.get("edit");
+        const isEditMode = !!editItemName;
+
+        if (isEditMode) {
+            // Hide add/view buttons, show update button
+            $(".btn-add-to-cart").addClass("hidden");
+            $(".btn-view-in-cart").addClass("hidden");
+            $(".btn-update-quote").removeClass("hidden");
+        }
 
         function validate() {
             const stationName = $(".station-name").val().trim();
-            $(".btn-add-to-cart").prop("disabled", stationName === "");
+            const disabled = stationName === "";
+            $(".btn-add-to-cart").prop("disabled", disabled);
+            $(".btn-update-quote").prop("disabled", disabled);
         }
 
         $(".station-name").on("keyup", galcom.utils.delay(validate, 300));
@@ -66,7 +93,7 @@
 
         // Toggle WiFi fields based on network connection type
         $(".network-connection-type").on("change", function() {
-            $(".wifi-fields").toggle($(this).val() === "WiFi");
+            $(".wifi-fields").toggle($(this).val() === "Wi-Fi");
         });
 
         // Show image preview when file is selected
@@ -153,7 +180,75 @@
             });
         });
 
-        galcom.utils.restoreGuestFields(guestStorageName, fieldNames);
+        // Update Quote button handler (edit mode)
+        $(".btn-update-quote").on("click", async (e) => {
+            const $btn = $(e.currentTarget);
+            $btn.prop("disabled", true);
+
+            const station_name = $(".station-name").val().trim();
+            const website = $(".station-website").val().trim();
+            const description = $(".station-description").val().trim();
+            const network_type = $(".network-connection-type").val();
+            const ssid = $(".wifi-ssid").val().trim();
+            const password = $(".wifi-password").val().trim();
+
+            let logo_url = null;
+            try {
+                logo_url = await uploadLogo();
+            } catch (err) {
+                console.error("Logo upload failed:", err);
+            }
+
+            const custom_fields = {
+                streamer_station_name: station_name,
+                streamer_website: website,
+                streamer_description: description,
+                streamer_network_connection_type: network_type,
+                streamer_ssid: ssid,
+                streamer_password: password,
+            };
+            if (logo_url) {
+                custom_fields.streamer_logo = logo_url;
+            }
+
+            webshop.webshop.shopping_cart.update_cart({
+                item_code: "{{ doc.item_code }}",
+                custom_fields: custom_fields,
+                qty: 1,
+                name: editItemName,
+                callback(r) {
+                    $btn.prop("disabled", false);
+                    window.location.href = "/cart";
+                }
+            });
+        });
+
+        // In edit mode, load existing configuration
+        if (isEditMode) {
+            frappe.call({
+                method: "webshop.webshop.shopping_cart.cart.get_item_configuration",
+                args: { quotation_item_name: editItemName },
+                callback(r) {
+                    if (r.message) {
+                        const cfg = r.message;
+                        $(".station-name").val(cfg.streamer_station_name || "");
+                        $(".station-website").val(cfg.streamer_website || "");
+                        $(".station-description").val(cfg.streamer_description || "");
+                        $(".network-connection-type").val(cfg.streamer_network_connection_type || "Cable").trigger("change");
+                        $(".wifi-ssid").val(cfg.streamer_ssid || "");
+                        $(".wifi-password").val(cfg.streamer_password || "");
+                        if (cfg.streamer_logo) {
+                            $(".station-logo-preview img").attr("src", cfg.streamer_logo);
+                            $(".station-logo-preview").show();
+                        }
+                        validate();
+                    }
+                }
+            });
+        } else {
+            galcom.utils.restoreGuestFields(guestStorageName, fieldNames);
+            $(".network-connection-type").trigger("change");
+        }
         setTimeout(validate, 1000);
     });
 </script>
