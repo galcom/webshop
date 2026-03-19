@@ -135,6 +135,10 @@
 				callback(r) {
 					$btn.prop('disabled', false);
 					if (r.message) {
+						frappe.show_alert({
+							message: __('Item has been added to the cart'),
+							indicator: 'green'
+						}, 3);
 						$('.btn-add-to-cart, .btn-view-in-cart').toggleClass('hidden');
 					}
 				}
