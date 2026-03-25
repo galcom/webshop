@@ -106,21 +106,26 @@
             if(frequencyInfo.valid === true){
                 // 1 freqs => single channel, >1 freqs => multichannel
                 // audio content non-empty => player as well
-                // options: FM, MW/FM, SW/FM,  MW/SW/FM                             
+                // options: FM, MW, SW/FM,  MW/SW/FM                             
+                // Available models and the bands they provide
+                const availableModels = [
+                    { prefix: "FM", bands: ["FM"] },
+                    { prefix: "MW", bands: ["MW"] },
+                    { prefix: "SF", bands: ["SW", "FM"] },
+                    { prefix: "AF", bands: ["MW", "SW", "FM"] },
+                ];
+                // Pick the model that covers all required bands with the fewest extras
+                const requiredBands = frequencyInfo.bands;
+                const validModels = availableModels
+                    .filter(m => requiredBands.every(b => m.bands.includes(b)))
+                    .sort((a, b) => a.bands.length - b.bands.length);
+
                 var prefix;
                 var channels;
-                if(frequencyInfo.bands.includes("MW") && frequencyInfo.bands.includes("SW"))
-                    prefix="AF";
-                else if(frequencyInfo.bands.includes("SW"))
-                    prefix="SF";
-                else if(frequencyInfo.bands.includes("MW") && frequencyInfo.bands.length === 1)
-                    prefix="MW";
-                else if(frequencyInfo.bands.includes("MW"))
-                    prefix="MF";
-                else if(frequencyInfo.bands.includes("FM"))
-                    prefix="FM";
-                else{
-                    console.error("unknown set of bands:",frequencyInfo.bands);
+                if (validModels.length > 0) {
+                    prefix = validModels[0].prefix;
+                } else {
+                    console.error("unknown set of bands:", requiredBands);
                 }
 
                 if(haveAudio)

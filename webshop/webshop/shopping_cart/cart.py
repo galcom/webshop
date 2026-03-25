@@ -231,6 +231,10 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
                     streamer_config.password = custom_fields.get("streamer_password", "")
                     streamer_config.insert(ignore_permissions=True)
                     args["custom_streamer_configuration"] = streamer_config.name
+                    # Store power supply on item additional_notes for later use
+                    power_supply = custom_fields.get("streamer_power_supply", "")
+                    if power_supply:
+                        args["additional_notes"] = f"\nPower Supply: {power_supply}"
                     # Remove raw streamer fields so they aren't set on the Quotation Item
                     args.pop("streamer_station_name", None)
                     args.pop("streamer_website", None)
@@ -239,6 +243,7 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
                     args.pop("streamer_network_connection_type", None)
                     args.pop("streamer_ssid", None)
                     args.pop("streamer_password", None)
+                    args.pop("streamer_power_supply", None)
                 
                 quotation.append("items",args )
                 frappe.msgprint(f"Item Added to Cart",alert=True,indicator="green")
@@ -270,6 +275,10 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
                         sc.password = custom_fields.get("streamer_password", "")
                         sc.save(ignore_permissions=True)
                         qi.custom_streamer_configuration = sc.name
+                        # Update power supply on item additional_notes
+                        power_supply = custom_fields.get("streamer_power_supply", "")
+                        if power_supply:
+                            qi.additional_notes = f"\nPower Supply: {power_supply}"
     else:  #quotation wide settings
         if custom_fields and "financial_assistance" in  custom_fields:
             logger.debug("financial assistance set to: "+str(custom_fields["financial_assistance"]))
@@ -277,7 +286,13 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
         if custom_fields and "custom_destination_country" in  custom_fields:
             quotation.set("custom_destination_country",custom_fields["custom_destination_country"])
         if custom_fields and "custom_customer_notes" in  custom_fields:
-            quotation.set("custom_customer_notes",custom_fields["custom_customer_notes"])
+            notes = custom_fields["custom_customer_notes"] or ""
+            # Append power supply from streamer items
+            for item in quotation.get("items"):
+                item_notes = item.get("additional_notes") or ""
+                if item_notes.startswith("\nPower Supply: "):
+                    notes = (notes + item_notes).strip()
+            quotation.set("custom_customer_notes", notes)
         if custom_fields and "tax_id" in  custom_fields:
             #fetch customer record and update there
             customer = frappe.get_doc("Customer",quotation.party_name)

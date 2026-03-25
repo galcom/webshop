@@ -23,6 +23,14 @@
     <textarea class="station-description h-auto form-control" rows="3" placeholder="Description of the station"></textarea>
     <small class="text-muted d-block mb-4">This description will be shown on the radio station list on our website (but not in the listening app).</small>
 
+    <label>Power Supply</label>
+    <select class="power-supply form-control">
+        <option value="North America">North America</option>
+        <option value="UK">UK</option>
+        <option value="Universal">Universal</option>
+    </select>
+    <small class="text-muted d-block mb-4">Select the power supply type for your region.</small>
+
     <label>Network Connection Type</label>
     <select class="network-connection-type form-control">
         <option value="Cable">Cable</option>
@@ -66,7 +74,7 @@
 </div>
 <script>
     frappe.ready(() => {
-        const fieldNames = ["station-name", "station-website", "station-description", "network-connection-type", "wifi-ssid", "wifi-password"];
+        const fieldNames = ["station-name", "station-website", "station-description", "power-supply", "network-connection-type", "wifi-ssid", "wifi-password"];
         const guestStorageName = "guest_streamer_config";
 
         // Detect edit mode from URL query param
@@ -144,6 +152,7 @@
             const station_name = $(".station-name").val().trim();
             const website = $(".station-website").val().trim();
             const description = $(".station-description").val().trim();
+            const power_supply = $(".power-supply").val();
             const network_type = $(".network-connection-type").val();
             const ssid = $(".wifi-ssid").val().trim();
             const password = $(".wifi-password").val().trim();
@@ -159,6 +168,7 @@
                 streamer_station_name: station_name,
                 streamer_website: website,
                 streamer_description: description,
+                streamer_power_supply: power_supply,
                 streamer_network_connection_type: network_type,
                 streamer_ssid: ssid,
                 streamer_password: password,
@@ -188,6 +198,7 @@
             const station_name = $(".station-name").val().trim();
             const website = $(".station-website").val().trim();
             const description = $(".station-description").val().trim();
+            const power_supply = $(".power-supply").val();
             const network_type = $(".network-connection-type").val();
             const ssid = $(".wifi-ssid").val().trim();
             const password = $(".wifi-password").val().trim();
@@ -203,6 +214,7 @@
                 streamer_station_name: station_name,
                 streamer_website: website,
                 streamer_description: description,
+                streamer_power_supply: power_supply,
                 streamer_network_connection_type: network_type,
                 streamer_ssid: ssid,
                 streamer_password: password,
@@ -234,6 +246,7 @@
                         $(".station-name").val(cfg.streamer_station_name || "");
                         $(".station-website").val(cfg.streamer_website || "");
                         $(".station-description").val(cfg.streamer_description || "");
+                        $(".power-supply").val(cfg.streamer_power_supply || "North America");
                         $(".network-connection-type").val(cfg.streamer_network_connection_type || "Cable").trigger("change");
                         $(".wifi-ssid").val(cfg.streamer_ssid || "");
                         $(".wifi-password").val(cfg.streamer_password || "");
