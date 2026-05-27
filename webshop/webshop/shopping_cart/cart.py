@@ -53,6 +53,7 @@ def get_cart_quotation(doc=None):
 		"shipping_rules": get_applicable_shipping_rules(party),
 		"cart_settings": frappe.get_cached_doc("Webshop Settings"),
 		"tax_id":party.get("tax_id",None),
+		"countries": frappe.get_all("Country", pluck="name", order_by="name"),
 	}
 
 
@@ -283,8 +284,17 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
         if custom_fields and "financial_assistance" in  custom_fields:
             logger.debug("financial assistance set to: "+str(custom_fields["financial_assistance"]))
             quotation.set("request_financial_assistance",custom_fields["financial_assistance"])
-        if custom_fields and "custom_destination_country" in  custom_fields:
-            quotation.set("custom_destination_country",custom_fields["custom_destination_country"])
+        if custom_fields and "custom_destination_countries" in  custom_fields:
+            selected = custom_fields["custom_destination_countries"] or []
+            # de-duplicate while preserving order
+            seen = set()
+            countries = [c for c in selected if c and not (c in seen or seen.add(c))]
+            quotation.set(
+                "custom_destination_countries",
+                [{"country": c} for c in countries],
+            )
+            # keep the legacy text field populated for any report/print format still reading it
+            quotation.set("custom_destination_country", ", ".join(countries))
         if custom_fields and "custom_customer_notes" in  custom_fields:
             notes = custom_fields["custom_customer_notes"] or ""
             # Append power supply from streamer items

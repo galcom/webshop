@@ -29,6 +29,93 @@ $.extend(shopping_cart, {
 		shopping_cart.bind_coupon_code();
 		shopping_cart.bind_financial_assistance();
 		shopping_cart.bind_remove_coupon_code();
+		shopping_cart.bind_destination_countries();
+	},
+
+	// Currently selected destination countries (source of truth = pills in the DOM)
+	get_selected_countries: function() {
+		return $("#dc_multiselect .dc-pill").map(function() {
+			return $(this).attr("data-country");
+		}).get();
+	},
+
+	bind_destination_countries: function() {
+		const $doc = $(document);
+
+		function esc(s) {
+			return $("<div>").text(s == null ? "" : s).html();
+		}
+		function get_all() {
+			try { return JSON.parse($("#dc_all_countries").text() || "[]"); }
+			catch (e) { return []; }
+		}
+		function hide_dropdown() {
+			$("#dc_dropdown").attr("hidden", true).empty();
+		}
+		function clear_invalid() {
+			shopping_cart.clear_error();
+			$("#dc_multiselect .dc-control").removeClass("is-invalid");
+		}
+		// persist the current selection to the quotation immediately
+		function persist_countries() {
+			shopping_cart.shopping_cart_update({
+				custom_destination_countries: shopping_cart.get_selected_countries()
+			});
+		}
+		function render_dropdown(term) {
+			const selected = shopping_cart.get_selected_countries();
+			const t = (term || "").trim().toLowerCase();
+			const matches = get_all().filter(c =>
+				selected.indexOf(c) === -1 && (!t || c.toLowerCase().indexOf(t) !== -1)
+			).slice(0, 50);
+			const $dd = $("#dc_dropdown");
+			if (!matches.length) {
+				$dd.html('<div class="dc-empty">No countries found</div>');
+			} else {
+				$dd.html(matches.map(c =>
+					`<div class="dc-option" data-country="${esc(c)}">${esc(c)}</div>`
+				).join(""));
+			}
+			$dd.removeAttr("hidden");
+		}
+
+		// open / filter the dropdown
+		$doc.on("focus", "#dc_search", function() { render_dropdown($(this).val()); });
+		$doc.on("input", "#dc_search", function() { render_dropdown($(this).val()); });
+
+		// add a country (mousedown so it fires before the input blur/outside-click)
+		$doc.on("mousedown", "#dc_dropdown .dc-option", function(e) {
+			e.preventDefault();
+			const country = $(this).attr("data-country");
+			if (country && shopping_cart.get_selected_countries().indexOf(country) === -1) {
+				$("#dc_multiselect .dc-pills").append(
+					`<span class="dc-pill" data-country="${esc(country)}">${esc(country)}` +
+					`<span class="dc-pill-remove" role="button" aria-label="Remove">&times;</span></span>`
+				);
+				persist_countries();
+			}
+			clear_invalid();
+			const $s = $("#dc_search");
+			$s.val("");
+			render_dropdown("");
+			$s.focus();
+		});
+
+		// remove a country
+		$doc.on("click", "#dc_multiselect .dc-pill-remove", function() {
+			$(this).closest(".dc-pill").remove();
+			persist_countries();
+		});
+
+		// clicking anywhere on the control focuses the search box
+		$doc.on("click", "#dc_multiselect .dc-control", function(e) {
+			if (!$(e.target).hasClass("dc-pill-remove")) $("#dc_search").focus();
+		});
+
+		// close the dropdown when clicking outside the widget
+		$doc.on("mousedown", function(e) {
+			if (!$(e.target).closest("#dc_multiselect").length) hide_dropdown();
+		});
 	},
 	bind_financial_assistance: function() {
 		$('.payment-summary').on('click','#financial_assistance', function() {
@@ -48,25 +135,26 @@ $.extend(shopping_cart, {
 	bind_request_quotation: function() {
 		$('.place-order').on('click','.btn-request-for-quotation', function() {
 			//do some validations first
-			const dest_country = $("#custom_destination_country");
+			const dest_countries = shopping_cart.get_selected_countries();
+			const $dest_control = $("#dc_multiselect .dc-control");
 			const assistance = $("#financial_assistance");
 			const notes =  $("#custom_customer_notes");
 			const taxId=  $("#tax_id");
-			console.log("request_quotation, dest country: "+dest_country.val()+" fin asist?" ,assistance.prop("checked"),taxId.val());
-			if( ! dest_country.val()){
+			console.log("request_quotation, dest countries: ",dest_countries," fin asist?" ,assistance.prop("checked"),taxId.val());
+			if( ! dest_countries.length){
 				shopping_cart.set_error("Final Destination Country not set.")
-				dest_country.toggleClass('is-invalid',true);
-				dest_country.focus();
+				$dest_control.toggleClass('is-invalid',true);
+				$("#dc_search").focus();
 				return;
 			}else{
 				shopping_cart.clear_error();
-				dest_country.toggleClass('is-invalid',false);
+				$dest_control.toggleClass('is-invalid',false);
 			}
 
 			console.log("request_quotation: past valication");
 			shopping_cart.shopping_cart_update({
 					financial_assistance: assistance.prop("checked"),
-					custom_destination_country:dest_country.val(),
+					custom_destination_countries:dest_countries,
 					custom_customer_notes:notes.val(),
 					tax_id: taxId.val()
 			},()=>{

@@ -112,7 +112,7 @@
                     { prefix: "FM", bands: ["FM"] },
                     { prefix: "MW", bands: ["MW"] },
                     { prefix: "SF", bands: ["SW", "FM"] },
-                    { prefix: "AF", bands: ["MW", "SW", "FM"] },
+                    // not available yet // { prefix: "AF", bands: ["MW", "SW", "FM"] },
                 ];
                 // Pick the model that covers all required bands with the fewest extras
                 const requiredBands = frequencyInfo.bands;
@@ -126,16 +126,23 @@
                     prefix = validModels[0].prefix;
                 } else {
                     console.error("unknown set of bands:", requiredBands);
+                    const bandsText = Array.isArray(requiredBands) && requiredBands.length
+                        ? requiredBands.join(", ")
+                        : "unknown";
+                    $("#freq-error").html("Unfotunanly, we don't have a single player that supports all those frequences! Please split them over  multiple players. <br>");
+                    model = null;
                 }
 
-                if(haveAudio)
-                    channels="P";
-                else if(frequencyInfo.count === 1)
-                    channels="S";
-                else
-                    channels="M";
+                if(prefix){
+                    if(haveAudio)
+                        channels="P";
+                    else if(frequencyInfo.count === 1)
+                        channels="S";
+                    else
+                        channels="M";
 
-                model = prefix+channels;
+                    model = prefix+channels;
+                }
             }else if(haveAudio){
                 model="CPL";
             }

@@ -13,9 +13,33 @@
 			<label class="form-check-label" for="financial_assistance">Request Finanical Assistance</label>
 		</div>
 		<div class="form-group">
-			<label for="custom_destination_country">Final Destination Country</label>
-			<input class="form-control" id="custom_destination_country" value="{{ doc.custom_destination_country or '' }}"/>
+			<label for="dc_search">Final Destination Countries</label>
+			<div class="dc-multiselect" id="dc_multiselect">
+				<div class="dc-control form-control">
+					<div class="dc-pills">
+						{% for row in doc.custom_destination_countries or [] %}
+						<span class="dc-pill" data-country="{{ row.country }}">{{ row.country }}<span class="dc-pill-remove" role="button" aria-label="Remove">&times;</span></span>
+						{% endfor %}
+					</div>
+					<input type="text" class="dc-search" id="dc_search" autocomplete="off" placeholder="Type to search countries…"/>
+				</div>
+				<div class="dc-dropdown" id="dc_dropdown" hidden></div>
+			</div>
+			<script type="application/json" id="dc_all_countries">{{ countries | tojson }}</script>
 		</div>
+		<style>
+			.dc-multiselect{position:relative;}
+			.dc-control{display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:34px;height:auto;padding:4px 8px;cursor:text;}
+			.dc-pills{display:contents;}
+			.dc-pill{display:inline-flex;align-items:center;background:var(--bg-light-gray,#f0f4f7);border:1px solid var(--border-color,#d1d8dd);border-radius:12px;padding:1px 8px;font-size:12px;line-height:1.6;white-space:nowrap;}
+			.dc-pill-remove{margin-left:6px;cursor:pointer;font-weight:bold;color:var(--text-muted,#8d99a6);}
+			.dc-pill-remove:hover{color:var(--text-color,#36414c);}
+			.dc-search{border:none;outline:none;flex:1 1 80px;min-width:80px;background:transparent;font-size:13px;padding:2px;}
+			.dc-dropdown{position:absolute;z-index:1000;left:0;right:0;top:100%;max-height:220px;overflow-y:auto;background:var(--card-bg,#fff);border:1px solid var(--border-color,#d1d8dd);border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.15);margin-top:2px;}
+			.dc-option{padding:6px 10px;cursor:pointer;font-size:13px;}
+			.dc-option:hover,.dc-option.active{background:var(--bg-light-gray,#f0f4f7);}
+			.dc-empty{padding:6px 10px;color:var(--text-muted,#8d99a6);font-size:13px;}
+		</style>
 
 		{% for address in shipping_addresses|selectattr("name","equalto",doc.shipping_address_name) %}
 		{% if "United States" in address.display %}

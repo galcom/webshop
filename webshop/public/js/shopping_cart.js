@@ -155,7 +155,7 @@ $.extend(shopping_cart, {
 	},
 
 	shopping_cart_update: function({item_code, qty, cart_dropdown, additional_notes,
-								name,financial_assistance,custom_destination_country,custom_customer_notes,tax_id},callback) {
+								name,financial_assistance,custom_destination_countries,custom_customer_notes,tax_id},callback) {
 		shopping_cart.update_cart({
 			item_code,
 			qty,
@@ -164,7 +164,7 @@ $.extend(shopping_cart, {
 			name:name,
 			custom_fields: {
 				financial_assistance:financial_assistance,
-				custom_destination_country: custom_destination_country,
+				custom_destination_countries: custom_destination_countries,
 				custom_customer_notes: custom_customer_notes,
 				tax_id: tax_id,
 			},
