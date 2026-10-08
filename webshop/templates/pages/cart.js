@@ -30,6 +30,73 @@ $.extend(shopping_cart, {
 		shopping_cart.bind_financial_assistance();
 		shopping_cart.bind_remove_coupon_code();
 		shopping_cart.bind_destination_countries();
+		shopping_cart.bind_cart_customer();
+	},
+
+	// Desk users only: put the cart on a customer's account
+	bind_cart_customer: function() {
+		const $section = $(".cart-customer");
+		if (!$section.length) return;
+
+		const current = $section.attr("data-customer") || "";
+		const control = frappe.ui.form.make_control({
+			parent: $section.find(".cart-customer-field"),
+			df: {
+				fieldtype: "Link",
+				options: "Customer",
+				fieldname: "cart_customer",
+				placeholder: __("Search customers"),
+				only_select: 1,
+				change: () => {
+					// an unmatched search is cleared on blur; keep the cart where it is
+					const customer = control.get_value();
+					if (customer && customer !== current) shopping_cart.set_cart_customer(customer);
+				},
+			},
+			render_input: true,
+		});
+		control.set_input(current);
+
+		$section.find(".btn-new-cart-customer").on("click", () => {
+			const d = new frappe.ui.Dialog({
+				title: __("New Customer"),
+				fields: [
+					{
+						label: __("Customer Name"),
+						fieldname: "customer_name",
+						fieldtype: "Data",
+						reqd: 1,
+					},
+				],
+				primary_action_label: __("Create"),
+				primary_action: (values) => {
+					frappe.call({
+						method: "webshop.webshop.shopping_cart.cart.create_cart_customer",
+						args: values,
+						freeze: true,
+						callback: (r) => {
+							if (!r.exc) {
+								d.hide();
+								window.location.reload();
+							}
+						},
+					});
+				},
+			});
+			d.show();
+		});
+	},
+
+	set_cart_customer: function(customer) {
+		return frappe.call({
+			method: "webshop.webshop.shopping_cart.cart.set_cart_customer",
+			args: { customer },
+			freeze: true,
+			callback: (r) => {
+				// addresses, prices and taxes all follow the customer
+				if (!r.exc) window.location.reload();
+			},
+		});
 	},
 
 	// Currently selected destination countries (source of truth = pills in the DOM)

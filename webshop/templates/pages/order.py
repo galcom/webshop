@@ -5,6 +5,17 @@ import frappe
 from frappe import _
 
 from webshop.webshop.doctype.webshop_settings.webshop_settings import show_attachments
+from webshop.webshop.shopping_cart.cart import is_desk_user
+
+
+def desk_user_can_view(doc):
+	"""A desk user's cart may be on another customer's account (set_cart_customer),
+	which the portal permission check (customers linked to the user) does not cover."""
+	if not is_desk_user():
+		return False
+	return doc.get("contact_email") == frappe.session.user or frappe.has_permission(
+		doc.doctype, "read", doc
+	)
 
 
 def get_context(context):
@@ -35,7 +46,7 @@ def get_context(context):
 	else:
 		context.print_format = "Standard"
 
-	if not frappe.has_website_permission(context.doc):
+	if not (frappe.has_website_permission(context.doc) or desk_user_can_view(context.doc)):
 		frappe.throw(_("Not Permitted"), frappe.PermissionError)
 
 	if context.doc.get("customer"):

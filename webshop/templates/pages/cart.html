@@ -100,6 +100,17 @@
 					{% endif %}
 				{% endif %}
 
+				{% if is_desk_user %}
+				<div class="mb-3 frappe-card p-5 cart-customer"
+					data-customer="{{ doc.party_name if doc.quotation_to == 'Customer' else '' }}">
+					<h6>{{ _("Customer") }}</h6>
+					<div class="cart-customer-field"></div>
+					<button class="btn btn-secondary btn-sm btn-new-cart-customer font-md">
+						{{ _("New Customer") }}
+					</button>
+				</div>
+				{% endif %}
+
 				<div class="mb-3 frappe-card p-5">
 					<div class="order-options">
 						{% include "templates/includes/cart/cart_order_options.html" %}
@@ -142,8 +153,8 @@
 {% endblock %}
 
 {% block base_scripts %}
-<!-- js should be loaded in body! -->
-{{ include_script("frappe-web.bundle.js") }}
+{# super() sets frappe.boot, which the Link controls need, and loads frappe-web.bundle.js #}
+{{ super() }}
 {{ include_script("controls.bundle.js") }}
 {{ include_script("dialog.bundle.js") }}
 {% endblock %}
