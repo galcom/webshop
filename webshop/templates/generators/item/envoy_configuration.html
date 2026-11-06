@@ -13,6 +13,7 @@
                 role="button">
                 {{  _("View in Cart") if cart_settings.enable_checkout else _("View in Quote") }}
             </a>
+            {% include "templates/generators/item/item_qty_input.html" %}
             <button class="btn btn-primary btn-add-to-cart mr-2 w-30-40" disabled >
                 <span class="mr-2">
                     <svg class="icon icon-md">
@@ -71,12 +72,14 @@
                 custom_fields: {
                     audio_content,
                 },
-				qty: 1,
+				// always a new cart line: each add may be configured differently
+				qty: webshop.item_qty.get(),
 				callback(r) {
 
 					$btn.prop('disabled', false);
 					if (r.message) {
-						$('.btn-add-to-cart, .btn-view-in-cart').toggleClass('hidden');
+						webshop.item_qty.set(1);
+						$('.btn-view-in-cart').removeClass('hidden');
 					}
 				}
 			});
@@ -91,7 +94,7 @@
                 custom_fields: {
                     audio_content,
                 },
-                qty: 1,
+                qty: webshop.item_qty.get(),
                 name: editItemName,
                 callback(r) {
                     $btn.prop('disabled', false);
@@ -107,6 +110,7 @@
                 args: { quotation_item_name: editItemName },
                 callback(r) {
                     if (r.message) {
+                        webshop.item_qty.set(r.message.qty);
                         $(".audio-content").val(r.message.audio_content || "");
                         $(".btn-update-quote").prop("disabled", !haveAudio());
                     }

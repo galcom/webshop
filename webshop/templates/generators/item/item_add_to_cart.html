@@ -96,10 +96,7 @@
 			<div class="mb-4 d-flex">
 				<!-- Add to Cart -->
 				{% if product_info.price and (cart_settings.allow_items_not_in_stock or product_info.get("in_stock")) %}
-					<a href="/cart" class="btn btn-light btn-view-in-cart hidden mr-2 font-md"
-						role="button">
-						{{  _("View in Cart") if cart_settings.enable_checkout else _("View in Quote") }}
-					</a>
+					{% include "templates/generators/item/item_qty_input.html" %}
 					<button
 						data-item-code="{{item_code}}"
 						class="btn btn-primary btn-add-to-cart mr-2 w-30-40"
@@ -111,6 +108,10 @@
 						</span>
 						{{ _("Add to Cart") if cart_settings.enable_checkout else  _("Add to Quote") }}
 					</button>
+					<a href="/cart" class="btn btn-light btn-view-in-cart mr-2 font-md{% if not product_info.qty %} hidden{% endif %}"
+						role="button">
+						{{  _("View in Cart") if cart_settings.enable_checkout else _("View in Quote") }}
+					</a>
 				{% endif %}
 
 				<!-- Contact Us -->
@@ -127,19 +128,25 @@
 		$('.page_content').on('click', '.btn-add-to-cart', (e) => {
 			// Bind action on add to cart button
 			const $btn = $(e.currentTarget);
+			const qty = webshop.item_qty.get();
 			$btn.prop('disabled', true);
 			const item_code = $btn.data('item-code');
 			webshop.webshop.shopping_cart.update_cart({
 				item_code,
-				qty: 1,
+				qty,
+				// adds to the qty already in the cart rather than replacing it
+				add_to_existing: 1,
 				callback(r) {
 					$btn.prop('disabled', false);
 					if (r.message) {
 						frappe.show_alert({
-							message: __('Item has been added to the cart'),
+							message: qty === 1
+								? __('Item has been added to the cart')
+								: __('{0} items have been added to the cart', [qty]),
 							indicator: 'green'
 						}, 3);
-						$('.btn-add-to-cart, .btn-view-in-cart').toggleClass('hidden');
+						webshop.item_qty.set(1);
+						$('.btn-view-in-cart').removeClass('hidden');
 					}
 				}
 			});

@@ -53,6 +53,7 @@
                 role="button">
                 {{ _("View in Cart") if cart_settings.enable_checkout else _("View in Quote") }}
             </a>
+            {% include "templates/generators/item/item_qty_input.html" %}
             <button class="btn btn-primary btn-add-to-cart mr-2 w-30-40" disabled>
                 <span class="mr-2">
                     <svg class="icon icon-md">
@@ -180,11 +181,13 @@
             webshop.webshop.shopping_cart.update_cart({
                 item_code: "{{ doc.item_code }}",
                 custom_fields: custom_fields,
-                qty: 1,
+                // always a new cart line: each add may be configured differently
+                qty: webshop.item_qty.get(),
                 callback(r) {
                     $btn.prop("disabled", false);
                     if (r.message) {
-                        $(".btn-add-to-cart, .btn-view-in-cart").toggleClass("hidden");
+                        webshop.item_qty.set(1);
+                        $(".btn-view-in-cart").removeClass("hidden");
                     }
                 }
             });
@@ -226,7 +229,7 @@
             webshop.webshop.shopping_cart.update_cart({
                 item_code: "{{ doc.item_code }}",
                 custom_fields: custom_fields,
-                qty: 1,
+                qty: webshop.item_qty.get(),
                 name: editItemName,
                 callback(r) {
                     $btn.prop("disabled", false);
@@ -243,6 +246,7 @@
                 callback(r) {
                     if (r.message) {
                         const cfg = r.message;
+                        webshop.item_qty.set(cfg.qty);
                         $(".station-name").val(cfg.streamer_station_name || "");
                         $(".station-website").val(cfg.streamer_website || "");
                         $(".station-description").val(cfg.streamer_description || "");

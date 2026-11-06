@@ -224,6 +224,7 @@ def get_item_configuration(quotation_item_name):
     for item in quotation.get("items"):
         if item.name == quotation_item_name:
             result["item_code"] = item.item_code
+            result["qty"] = item.qty
             result["frequencies"] = item.get("frequencies") or ""
             result["audio_content"] = item.get("audio_content") or ""
             # Streamer Configuration
@@ -241,7 +242,13 @@ def get_item_configuration(quotation_item_name):
     frappe.throw("Quotation item not found")
 
 @frappe.whitelist()
-def update_cart(item_code=None, qty=None, additional_notes=None, with_items=False,custom_fields=None,name=None):
+def update_cart(item_code=None, qty=None, additional_notes=None, with_items=False,custom_fields=None,name=None,add_to_existing=False):
+    """Set a cart line's qty, or add a new line.
+
+    add_to_existing: from a product page's Add to Cart (no `name`). Adds `qty`
+    to the item's existing plain cart line instead of appending a second line
+    for the same item.
+    """
     logger=frappe.logger("webshop")
     logger.setLevel("DEBUG")
     logger.debug(f"in update_cart. item: {item_code} name: {name}")
@@ -269,7 +276,14 @@ def update_cart(item_code=None, qty=None, additional_notes=None, with_items=Fals
 
         else: #adding new item, or adjusting quantity
             quotation_items = quotation.get("items", {item_identifier: identifier_value })
-            if not quotation_items: #new item
+            plain_line = None
+            if not quotation_items and cint(add_to_existing) and not custom_fields:
+                plain_line = next((d for d in quotation.get("items", {"item_code": item_code})
+                    if not (d.get("custom_streamer_configuration") or d.get("frequencies")
+                        or d.get("audio_content"))), None)
+            if plain_line:
+                plain_line.qty = flt(plain_line.qty) + qty
+            elif not quotation_items: #new item
                 logger.debug(f"no items found with  {item_identifier} of {identifier_value}")
                 args =  {
                     "doctype": "Quotation Item",

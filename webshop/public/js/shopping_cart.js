@@ -107,7 +107,8 @@ $.extend(shopping_cart, {
 					additional_notes: opts.additional_notes !== undefined ? opts.additional_notes : undefined,
 					with_items: opts.with_items || 0,
 					name: opts.name,
-					custom_fields: opts.custom_fields
+					custom_fields: opts.custom_fields,
+					add_to_existing: opts.add_to_existing ? 1 : 0
 				},
 				btn: opts.btn,
 				callback: function(r) {

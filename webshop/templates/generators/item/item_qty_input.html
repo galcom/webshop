@@ -1,0 +1,44 @@
+<!-- Quantity picker for a product page's Add to Cart. Read/write it with
+     webshop.item_qty.get() / webshop.item_qty.set(n); there is one per page. -->
+<div class="input-group item-qty-spinner mr-2">
+	<span class="input-group-prepend">
+		<button type="button" class="btn btn-light item-qty-step" data-dir="dwn"
+			aria-label="{{ _('Decrease quantity') }}">–</button>
+	</span>
+	<input type="number" class="form-control text-center item-qty-input"
+		value="1" min="1" step="1" inputmode="numeric"
+		aria-label="{{ _('Quantity') }}">
+	<span class="input-group-append">
+		<button type="button" class="btn btn-light item-qty-step" data-dir="up"
+			aria-label="{{ _('Increase quantity') }}">+</button>
+	</span>
+</div>
+
+<style>
+	.item-qty-spinner { width: auto; flex-wrap: nowrap; }
+	.item-qty-spinner .item-qty-input { max-width: 70px; -moz-appearance: textfield; }
+	.item-qty-spinner .item-qty-input::-webkit-outer-spin-button,
+	.item-qty-spinner .item-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+</style>
+
+<script>
+	frappe.ready(() => {
+		frappe.provide("webshop.item_qty");
+		const $input = () => $(".item-qty-input");
+		const parse = (value) => {
+			const qty = parseInt(value, 10);
+			return qty > 0 ? qty : 1;
+		};
+
+		webshop.item_qty.get = () => parse($input().val());
+		webshop.item_qty.set = (qty) => $input().val(parse(qty));
+
+		$(document).on("click", ".item-qty-step", (e) => {
+			const step = $(e.currentTarget).data("dir") === "up" ? 1 : -1;
+			webshop.item_qty.set(Math.max(webshop.item_qty.get() + step, 1));
+		});
+		$(document).on("change", ".item-qty-input", () => {
+			webshop.item_qty.set(webshop.item_qty.get());
+		});
+	});
+</script>
