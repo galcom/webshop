@@ -276,12 +276,19 @@ $.extend(shopping_cart, {
 			let notes = input.closest("td").siblings().find(".notes").text().trim();
 			var item_code = input.attr("data-item-code");
 			var name = input.attr("data-name");
-			shopping_cart.shopping_cart_update({
-				item_code,
-				qty: newVal,
-				additional_notes: notes,
-				name:name
-			});
+			// Debounce per row: a burst of clicks sends only the final quantity,
+			// instead of one cart save per click racing the others.
+			const key = name || item_code;
+			clearTimeout(shopping_cart._qty_timers[key]);
+			shopping_cart._qty_timers[key] = setTimeout(() => {
+				delete shopping_cart._qty_timers[key];
+				shopping_cart.shopping_cart_update({
+					item_code,
+					qty: newVal,
+					additional_notes: notes,
+					name:name
+				});
+			}, 350);
 		});
 	},
 	

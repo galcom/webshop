@@ -85,7 +85,20 @@ $.extend(shopping_cart, {
 			});
 		} else {
 			//shopping_cart.freeze();
-			return frappe.call({
+			// Every cart update saves the same cart Quotation, so two requests in
+			// flight at once collide in the database ("Record has changed since
+			// last read in table 'tabQuotation'"), e.g. when +/- is clicked quickly.
+			// Run them strictly one after another.
+			shopping_cart._cart_pending++;
+			const run = () => new Promise((resolve) => {
+				let finished = false;
+				const finish = () => {
+					if (!finished) {
+						finished = true;
+						shopping_cart._cart_pending--;
+					}
+				};
+				frappe.call({
 				type: "POST",
 				method: "webshop.webshop.shopping_cart.cart.update_cart",
 				args: {
@@ -98,13 +111,32 @@ $.extend(shopping_cart, {
 				},
 				btn: opts.btn,
 				callback: function(r) {
+					finish();
 					//shopping_cart.unfreeze();
 					shopping_cart.set_cart_count(true);
 					if(opts.callback)
 						opts.callback(r);
 				}
+				}).always(() => {
+					finish();
+					resolve();
+				});
 			});
+			shopping_cart._cart_queue = shopping_cart._cart_queue.then(run);
+			return shopping_cart._cart_queue;
 		}
+	},
+
+	_cart_queue: Promise.resolve(),
+	_cart_pending: 0,
+	_qty_timers: {},
+
+	// True while another cart update is queued or a quantity change is still
+	// waiting out its debounce; its response will re-render the cart, so an
+	// older response must not overwrite what the user has since typed/clicked.
+	cart_update_waiting: function() {
+		return shopping_cart._cart_pending > 0
+			|| Object.keys(shopping_cart._qty_timers).length > 0;
 	},
 	
 	set_cart_count: function(animate=false) {
@@ -171,6 +203,11 @@ $.extend(shopping_cart, {
 			btn: this,
 			callback: function(r) {
 				if(!r.exc) {
+					if (shopping_cart.cart_update_waiting()) {
+						if(callback)
+							callback();
+						return;
+					}
 					$(".cart-items").html(r.message.items);
 					$(".cart-tax-items").html(r.message.total);
 					$(".payment-summary").html(r.message.taxes_and_totals);
